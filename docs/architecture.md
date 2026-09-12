@@ -4,7 +4,7 @@
 Update this document in the same change that alters generation, tools, endpoints, or
 data tiers. Feature specs live in `docs/specs/`; the editorial contract for data lives
 in `significance-rubric.md`. Diagrams are Mermaid (rendered by GitHub and VS Code
-preview). Last updated 2026-08-15.*
+preview). Last updated 2026-09-12.*
 
 A deliberate choice frames everything here: **the agentic loop is hand-rolled and runs
 in the browser**, because the tools *are* canvas mutations. We are experimenting with

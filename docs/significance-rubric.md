@@ -31,7 +31,7 @@ Reserved for deep zoom and future granular data: individual reigns, city-level e
 
 - `start` / `end`: integer years; **negative = BCE** (no year-zero handling at this precision).
 - `circa: true` on traditional or approximate dates (Rome's founding, the Buddha, migrations). Display prefix: "c."
-- Events that *are* spans (a plague, a war fought to a finish) may carry `end`; "X begins"-style events stay points. The renderer currently draws points at `start`; `end` is data-ahead-of-renderer by design.
+- Events that *are* spans (a plague, a war fought to a finish) may carry `end`; "X begins"-style events stay points. Span events render as lane-colored capsules from `start` to `end` (shipped 2026-07-25), and the time ruler rings a span wherever it crosses it.
 
 ## Themes (exactly one list, tag 1+ per event)
 

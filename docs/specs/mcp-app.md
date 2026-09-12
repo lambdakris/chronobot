@@ -254,6 +254,29 @@ registry and are exercised in both.
 4. Feel-test in Claude Desktop; verify scenarios; record results against the
    supersession criteria in this spec.
 
+## Running the variant (reference)
+
+`npm run mcp` starts the stdio server. Claude Desktop config
+(`claude_desktop_config.json` — on Windows at `%APPDATA%\Claude\`, or in-app
+via Settings → Developer → Edit Config):
+
+```json
+{
+  "mcpServers": {
+    "chronobot": {
+      "command": "node",
+      "args": ["<absolute path to repo>/mcp-server.mjs"]
+    }
+  }
+}
+```
+
+Windows + WSL: use `"command": "wsl.exe"` with the **absolute** node path as
+the first arg (e.g. `~/.nvm/versions/node/<version>/bin/node`) — nvm-managed
+node is not on `wsl.exe`'s non-interactive PATH, and the path goes stale when
+node is upgraded through nvm. Fully restart the host after config changes,
+then ask it to "show the ChronoBot canvas".
+
 ## Out of scope (this version)
 
 - Retiring anything from Variant A (that is the gate above, not this build).
