@@ -1,0 +1,25 @@
+[
+  { "id": "americas",    "name": "Americas",    "query": { "regions": ["americas"] },                                    "anchor": { "lon0": -106, "lon1": -63, "lat0": -35, "lat1": 28 },
+    "children": [
+      { "id": "americas-north", "name": "North America", "short": "N. America",  "query": { "regions": ["americas.north"] },        "anchor": { "lon0": -117, "lon1": -66, "lat0": 17,  "lat1": 50 } },
+      { "id": "americas-meso",  "name": "Mesoamerica",   "short": "Mesoamerica", "query": { "regions": ["americas.mesoamerica"] },  "anchor": { "lon0": -105, "lon1": -85, "lat0": 14,  "lat1": 25 } },
+      { "id": "americas-andes", "name": "Andes",         "short": "Andes",       "query": { "regions": ["americas.andes"] },        "anchor": { "lon0": -81,  "lon1": -63, "lat0": -35, "lat1": 2 } }
+    ] },
+  { "id": "europe",      "name": "Europe",      "query": { "regions": ["europe"] },      "mid": true,                    "anchor": { "lon0": -10,  "lon1": 28,  "lat0": 36,  "lat1": 62 } },
+  { "id": "africa",      "name": "Africa",      "query": { "regions": ["africa"] },      "mid": true,                    "anchor": { "lon0": -17,  "lon1": 43,  "lat0": -32, "lat1": 34 },
+    "children": [
+      { "id": "africa-west",  "name": "West Africa",               "short": "West",       "query": { "regions": ["africa.west"] },             "anchor": { "lon0": -17, "lon1": 10, "lat0": 4,   "lat1": 17 } },
+      { "id": "africa-north", "name": "Egypt & North Africa",      "short": "Egypt & N.", "query": { "regions": ["africa.north"] },            "anchor": { "lon0": -10, "lon1": 35, "lat0": 22,  "lat1": 34 } },
+      { "id": "africa-east",  "name": "East Africa & Horn",        "short": "East",       "query": { "regions": ["africa.east"] },             "anchor": { "lon0": 32,  "lon1": 51, "lat0": -12, "lat1": 15 } },
+      { "id": "africa-south", "name": "Central & Southern Africa", "short": "South",      "query": { "regions": ["africa.central-southern"] }, "anchor": { "lon0": 10,  "lon1": 35, "lat0": -34, "lat1": -5 } }
+    ] },
+  { "id": "middle-east", "name": "Middle East", "query": { "regions": ["middle-east"] }, "mid": true,                    "anchor": { "lon0": 34,   "lon1": 56,  "lat0": 13,  "lat1": 40 } },
+  { "id": "south-asia",  "name": "South Asia",  "query": { "regions": ["asia.south"] },                                  "anchor": { "lon0": 65,   "lon1": 92,  "lat0": 6,   "lat1": 34 } },
+  { "id": "east-asia",   "name": "East Asia",   "query": { "regions": ["asia.east", "asia.southeast", "asia.steppe"] },  "anchor": { "lon0": 100,  "lon1": 142, "lat0": 18,  "lat1": 44 },
+    "children": [
+      { "id": "ea-steppe",    "name": "Eurasian Steppe", "short": "Steppe",  "query": { "regions": ["asia.steppe"] },     "anchor": { "lon0": 60,  "lon1": 110, "lat0": 40, "lat1": 52 } },
+      { "id": "ea-china",     "name": "China",           "short": "China",   "query": { "regions": ["asia.east.china"] }, "anchor": { "lon0": 100, "lon1": 122, "lat0": 20, "lat1": 42 } },
+      { "id": "ea-japan",     "name": "Japan",           "short": "Japan",   "query": { "regions": ["asia.east.japan"] }, "anchor": { "lon0": 130, "lon1": 143, "lat0": 31, "lat1": 44 } },
+      { "id": "ea-southeast", "name": "Southeast Asia",  "short": "SE Asia", "query": { "regions": ["asia.southeast"] },  "anchor": { "lon0": 95,  "lon1": 110, "lat0": -8, "lat1": 18 } }
+    ] }
+]

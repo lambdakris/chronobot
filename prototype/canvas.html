@@ -1,0 +1,1489 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>ChronoBot — Canvas Prototype</title></head>
+<body>
+<style>
+  html, body { margin: 0; padding: 0; height: 100%; }
+  .cb {
+    color-scheme: light;
+    --surface: #fcfcfb; --plane: #f9f9f7;
+    --ink: #0b0b0b; --ink2: #52514e; --muted: #898781;
+    --grid: #e1e0d9; --axis: #c3c2b7; --border: rgba(11,11,11,.10);
+    --ocean: #e8edf1; --land: #dad6c9; --landline: #c4beac;
+    --s1: #2a78d6; --s2: #008300; --s3: #e87ba4; --s4: #eda100;
+    --s5: #1baf7a; --s6: #eb6834; --s7: #4a3aa7; --s8: #e34948;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) .cb {
+      color-scheme: dark;
+      --surface: #1a1a19; --plane: #0d0d0d;
+      --ink: #ffffff; --ink2: #c3c2b7; --muted: #898781;
+      --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,.10);
+      --ocean: #10161b; --land: #272a2d; --landline: #3c4146;
+      --s1: #3987e5; --s2: #008300; --s3: #d55181; --s4: #c98500;
+      --s5: #199e70; --s6: #d95926; --s7: #9085e9; --s8: #e66767;
+    }
+  }
+  :root[data-theme="dark"] .cb {
+    color-scheme: dark;
+    --surface: #1a1a19; --plane: #0d0d0d;
+    --ink: #ffffff; --ink2: #c3c2b7; --muted: #898781;
+    --grid: #2c2c2a; --axis: #383835; --border: rgba(255,255,255,.10);
+    --ocean: #10161b; --land: #272a2d; --landline: #3c4146;
+    --s1: #3987e5; --s2: #008300; --s3: #d55181; --s4: #c98500;
+    --s5: #199e70; --s6: #d95926; --s7: #9085e9; --s8: #e66767;
+  }
+
+  .cb {
+    height: 100dvh; display: flex; flex-direction: column;
+    background: var(--plane); color: var(--ink);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif; font-size: 14px;
+  }
+  .topbar {
+    display: flex; align-items: center; gap: 12px;
+    padding: 8px 18px; border-bottom: 1px solid var(--border);
+  }
+  .wordmark {
+    font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    font-size: 21px; font-weight: 600; letter-spacing: .01em;
+  }
+  .eyebrow { font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+  .topbar .spacer { flex: 1; }
+  .btn {
+    border: 1px solid var(--border); background: transparent; color: var(--ink2);
+    border-radius: 8px; padding: 6px 11px; font: inherit; font-size: 12.5px; cursor: pointer;
+    align-self: center;
+  }
+  .btn:hover { border-color: var(--axis); color: var(--ink); }
+  .btn:focus-visible, .zbtn:focus-visible, .ddrow input:focus-visible { outline: 2px solid var(--s1); outline-offset: 2px; }
+
+  .range { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  .dd { position: relative; }
+  .dd > summary { list-style: none; user-select: none; display: inline-block; }
+  .dd > summary::-webkit-details-marker { display: none; }
+  .dd[open] > summary { border-color: var(--axis); color: var(--ink); }
+  .ddpanel {
+    position: absolute; right: 0; top: calc(100% + 6px); z-index: 60;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+    box-shadow: 0 8px 28px rgba(0,0,0,.16); padding: 8px; min-width: 180px;
+  }
+  .ddpanel.wide { width: min(680px, 92vw); max-height: 60vh; overflow: auto; }
+  .ddrow { display: flex; align-items: center; gap: 8px; padding: 5px 8px; font-size: 13px; color: var(--ink2); border-radius: 6px; cursor: pointer; }
+  .ddrow:hover { background: color-mix(in srgb, var(--ink) 6%, transparent); }
+  .ddrow input { accent-color: var(--s1); margin: 0; }
+  .allbtn { display: block; width: 100%; margin-bottom: 4px; text-align: center; }
+
+  .zoomctl {
+    display: flex; align-items: center; gap: 2px;
+    border: 1px solid var(--border); border-radius: 8px; padding: 2px 4px;
+  }
+  .zbtn {
+    width: 24px; height: 24px; border: none; border-radius: 6px;
+    background: transparent; color: var(--ink2); font-size: 15px; line-height: 1; cursor: pointer;
+  }
+  .zbtn:hover { color: var(--ink); background: color-mix(in srgb, var(--ink) 7%, transparent); }
+  .ztiers { display: flex; align-items: center; gap: 3px; padding: 0 4px; }
+  .zd { border-radius: 50%; background: var(--muted); opacity: .22; }
+  .zd1 { width: 7px; height: 7px; } .zd2 { width: 5px; height: 5px; } .zd3 { width: 4px; height: 4px; }
+  .zd.on { opacity: .9; }
+
+  .workrow { flex: 1; min-height: 0; display: flex; gap: 8px; margin: 0 18px 6px; }
+  .stage {
+    flex: 1; min-width: 0; display: flex; flex-direction: column;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
+  }
+
+  .chatpanel {
+    width: 320px; flex: none; display: flex; flex-direction: column; min-height: 0;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
+  }
+  .cb.chat-closed .chatpanel { display: none; }
+  .chathead {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 8px 8px 8px 14px; border-bottom: 1px solid var(--border);
+    font-size: 13px; font-weight: 600; color: var(--ink2);
+  }
+  .chathead .btn { padding: 2px 8px; }
+  .selrow[hidden] { display: none; }
+  .selrow {
+    display: flex; align-items: center; gap: 8px; padding: 6px 14px;
+    font-size: 12px; color: var(--ink2); border-bottom: 1px solid var(--border);
+    background: color-mix(in srgb, var(--s1) 7%, transparent);
+  }
+  .selrow button { border: none; background: none; color: var(--muted); cursor: pointer; font: inherit; }
+  .chatlog {
+    flex: 1; min-height: 0; overflow-y: auto; padding: 10px;
+    display: flex; flex-direction: column; gap: 8px; font-size: 13px;
+  }
+  .msg { padding: 7px 10px; border-radius: 10px; max-width: 94%; line-height: 1.45; white-space: pre-wrap; overflow-wrap: break-word; }
+  .msg.user { align-self: flex-end; background: color-mix(in srgb, var(--s1) 13%, transparent); }
+  .msg.bot { align-self: flex-start; background: color-mix(in srgb, var(--ink) 6%, transparent); }
+  .msg.action { align-self: center; max-width: 100%; padding: 0 4px; color: var(--muted); font-size: 11.5px; text-align: center; }
+  .chatform { display: flex; gap: 6px; padding: 8px; border-top: 1px solid var(--border); }
+  .chatform input {
+    flex: 1; min-width: 0; border: 1px solid var(--border); border-radius: 8px;
+    background: transparent; color: var(--ink); font: inherit; font-size: 13px; padding: 6px 10px;
+  }
+  .chatform input:focus-visible { outline: 2px solid var(--s1); outline-offset: 1px; }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .hl { animation: hlpulse 1.6s ease-in-out infinite; }
+    @keyframes hlpulse { 0%, 100% { stroke-opacity: .9; } 50% { stroke-opacity: .35; } }
+    /* one-shot entry pop when the copilot sets fresh highlights */
+    .hl.hlpop {
+      transform-box: fill-box; transform-origin: center;
+      animation: hlpop .5s cubic-bezier(.2,.8,.3,1.2), hlpulse 1.6s ease-in-out .5s infinite;
+    }
+    @keyframes hlpop { from { transform: scale(2.4); stroke-opacity: 0; } to { transform: scale(1); stroke-opacity: .9; } }
+    /* glow ring around the stage whenever the copilot touches the canvas */
+    .stage.copilot-pulse { animation: stagepulse .9s ease-out; }
+    @keyframes stagepulse {
+      0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--s1) 50%, transparent); }
+      100% { box-shadow: 0 0 0 18px transparent; }
+    }
+  }
+  #tlwrap { flex: 1; min-height: 0; position: relative; cursor: grab; touch-action: none; }
+  #tlwrap.panning { cursor: grabbing; }
+  #tl, #map { display: block; width: 100%; height: 100%; }
+  #mapwrap { height: 148px; flex: none; position: relative; border-top: 1px solid var(--border); }
+
+  .lanehead {
+    position: absolute; top: 6px; transform: translateX(-50%);
+    display: flex; align-items: center; gap: 6px; padding: 3px 9px;
+    font-size: 12px; font-weight: 600; color: var(--ink2); white-space: nowrap;
+    background: color-mix(in srgb, var(--surface) 84%, transparent);
+    border-radius: 6px; cursor: default; z-index: 3;
+  }
+  .lanehead .dotchip { width: 9px; height: 9px; border-radius: 3px; flex: none; }
+  .lanehead.clickable { cursor: pointer; }
+  .lanehead.clickable:hover { color: var(--ink); }
+  .lanehead.dim, .laneband.dim, .mapband.dim { opacity: .3; }
+
+  .ruler { position: absolute; left: 0; right: 0; z-index: 4; height: 0; border-top: 1.5px solid var(--ink); opacity: .8; pointer-events: none; }
+  .rulergrab { position: absolute; left: 0; right: 0; height: 16px; transform: translateY(-8px); z-index: 5; cursor: ns-resize; }
+  .rulerchip {
+    position: absolute; left: 8px; transform: translateY(-50%); z-index: 6;
+    background: var(--ink); color: var(--surface); font-size: 11.5px; font-weight: 600;
+    font-variant-numeric: tabular-nums; padding: 2.5px 10px; border-radius: 999px; cursor: ns-resize;
+    white-space: nowrap; user-select: none;
+  }
+  .rulerchip b { font-weight: 700; }
+  .rulerchip i { font-style: normal; font-weight: 500; opacity: .75; margin-left: 6px; letter-spacing: .02em; }
+
+  .tip {
+    position: fixed; z-index: 40; pointer-events: none; display: none;
+    background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+    box-shadow: 0 4px 18px rgba(0,0,0,.18); padding: 8px 11px; font-size: 12.5px; max-width: 260px;
+  }
+  .tip .t { font-weight: 600; margin-bottom: 2px; }
+  .tip .m { color: var(--ink2); font-size: 12px; }
+
+  .scroller { overflow-x: auto; }
+  #datatable { border-collapse: collapse; font-variant-numeric: tabular-nums; font-size: 12.5px; color: var(--ink2); }
+  #datatable th, #datatable td { text-align: left; padding: 3px 14px 3px 6px; border-bottom: 1px solid var(--grid); white-space: nowrap; }
+  #datatable th { color: var(--muted); font-weight: 600; }
+
+  .tick { fill: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+  .evlabel { fill: var(--ink2); font-size: 11px; pointer-events: none; }
+  .evlabel.t1 { font-weight: 600; fill: var(--ink); }
+
+  /* cross-lane threads (docs/specs/cross-lane-threads.md) — solid = curated
+     canon, dashed = ad-hoc copilot gesture; --s7 is reserved for threads */
+  .threadpath { fill: none; stroke: var(--s7); pointer-events: none; }
+  .threadpath.under { stroke-width: 7; opacity: .14; }
+  .threadpath.over { stroke-width: 2.25; opacity: .85; stroke-linecap: round; }
+  .threadpath.over.adhoc { stroke-dasharray: 6 5; }
+  .threadring { pointer-events: none; }
+  .threadlabel {
+    fill: var(--s7); font-size: 11.5px; font-weight: 650; pointer-events: none;
+    paint-order: stroke; stroke: var(--surface); stroke-width: 3.5px;
+  }
+  .threadrow { display: block; width: 100%; border: none; background: none; font: inherit; text-align: left; }
+  .threadrow.on { color: var(--ink); font-weight: 600; }
+  @media (prefers-reduced-motion: no-preference) {
+    /* one-shot draw-on after the glide settles: solid paths wipe past→present
+       (pathLength-normalized dashoffset); dashed ad-hoc paths fade in instead,
+       since a dashoffset wipe would just scroll the dashes */
+    .threadpath.over.threaddraw:not(.adhoc) {
+      stroke-dasharray: 1; stroke-dashoffset: 1;
+      animation: threadwipe .8s ease-out forwards;
+    }
+    @keyframes threadwipe { to { stroke-dashoffset: 0; } }
+    .threadpath.over.adhoc.threaddraw, .threadpath.under.threaddraw { animation: threadfade .5s ease-out; }
+    .threadlabel.threaddraw { animation: threadfade .5s ease-out .35s backwards; }
+    @keyframes threadfade { from { opacity: 0; } }
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .lanehead, .laneband, .mapband { transition: opacity .15s ease; }
+  }
+</style>
+
+<div class="cb" id="cbroot">
+  <header class="topbar">
+    <span class="wordmark">ChronoBot</span>
+    <span class="eyebrow">Canvas prototype · v1</span>
+    <span class="spacer"></span>
+    <span class="range" id="st-range"></span>
+    <div class="zoomctl" role="group" aria-label="Zoom">
+      <button class="zbtn" id="zout" title="Zoom out (or scroll on the canvas)">−</button>
+      <div class="ztiers" id="ztiers"><span class="zd zd1"></span><span class="zd zd2"></span><span class="zd zd3"></span></div>
+      <button class="zbtn" id="zin" title="Zoom in — reveals finer event tiers (or scroll on the canvas)">+</button>
+    </div>
+    <details class="dd" id="themedd">
+      <summary class="btn" id="themesum">Themes</summary>
+      <div class="ddpanel" id="themepanel" role="group" aria-label="Filter events by theme"></div>
+    </details>
+    <details class="dd" id="threaddd">
+      <summary class="btn" id="threadsum">Threads</summary>
+      <div class="ddpanel" id="threadpanel" role="group" aria-label="Show a curated cross-lane thread"></div>
+    </details>
+    <details class="dd" id="datadd">
+      <summary class="btn">Event data</summary>
+      <div class="ddpanel wide"><div class="scroller"><table id="datatable"></table></div></div>
+    </details>
+    <button class="btn" id="resetbtn">Reset view</button>
+    <button class="btn" id="chatbtn" title="Toggle the copilot chat panel">Copilot</button>
+  </header>
+
+  <div class="workrow">
+  <div class="stage">
+    <div id="tlwrap" aria-label="Timeline canvas. Scroll to zoom, drag to pan.">
+      <svg id="tl" role="img" aria-label="Synchronoptic timeline of world history"></svg>
+      <div class="ruler" id="ruler"></div>
+      <div class="rulergrab" id="rulergrab" title="Drag up or down — shows what was happening everywhere at one moment"></div>
+      <div class="rulerchip" id="rulerchip" title="Drag up or down — shows what was happening everywhere at one moment">time ruler</div>
+    </div>
+    <div id="mapwrap">
+      <svg id="map" role="img" aria-label="World map with lane territories"></svg>
+    </div>
+  </div>
+  <aside class="chatpanel" id="chatpanel" aria-label="Copilot chat">
+    <div class="chathead">
+      <span>Copilot</span>
+      <button class="btn" id="chatclose" title="Close the copilot panel">✕</button>
+    </div>
+    <div class="selrow" id="selrow" hidden>
+      <span id="seltext"></span>
+      <button id="selclear" title="Clear selection">✕</button>
+    </div>
+    <div class="chatlog" id="chatlog"></div>
+    <form class="chatform" id="chatform">
+      <input id="chatinput" type="text" placeholder="Ask about what you see…" autocomplete="off">
+      <button class="btn" type="submit">Send</button>
+    </form>
+  </aside>
+  </div>
+
+  <div class="tip" id="tip"></div>
+</div>
+
+<script>
+(() => {
+'use strict';
+
+// ---------- Data ----------
+// Canonical data lives in data/*.json; see docs/significance-rubric.md for the
+// editorial contract. Regenerate the inlined block with: node prototype/build.mjs
+// __DATA_START__
+const DATA = {"themes":{"politics":"Politics","war":"War","religion":"Religion","culture":"Culture","tech":"Science & Tech","crisis":"Crisis"},"regions":{"americas":"The Americas","americas.mesoamerica":"Mesoamerica","americas.andes":"Andes","americas.north":"North America & Caribbean","europe":"Europe","africa":"Africa","africa.west":"West Africa","africa.north":"Egypt & North Africa","africa.east":"East Africa & Horn","africa.central-southern":"Central & Southern Africa","middle-east":"Middle East","asia.south":"South Asia","asia.east":"East Asia","asia.east.china":"China","asia.east.japan":"Japan","asia.southeast":"Southeast Asia","asia.steppe":"Eurasian Steppe"},"lanes":[{"id":"americas","name":"Americas","query":{"regions":["americas"]},"anchor":{"lon0":-106,"lon1":-63,"lat0":-35,"lat1":28},"children":[{"id":"americas-north","name":"North America","short":"N. America","query":{"regions":["americas.north"]},"anchor":{"lon0":-117,"lon1":-66,"lat0":17,"lat1":50}},{"id":"americas-meso","name":"Mesoamerica","short":"Mesoamerica","query":{"regions":["americas.mesoamerica"]},"anchor":{"lon0":-105,"lon1":-85,"lat0":14,"lat1":25}},{"id":"americas-andes","name":"Andes","short":"Andes","query":{"regions":["americas.andes"]},"anchor":{"lon0":-81,"lon1":-63,"lat0":-35,"lat1":2}}]},{"id":"europe","name":"Europe","query":{"regions":["europe"]},"mid":true,"anchor":{"lon0":-10,"lon1":28,"lat0":36,"lat1":62}},{"id":"africa","name":"Africa","query":{"regions":["africa"]},"mid":true,"anchor":{"lon0":-17,"lon1":43,"lat0":-32,"lat1":34},"children":[{"id":"africa-west","name":"West Africa","short":"West","query":{"regions":["africa.west"]},"anchor":{"lon0":-17,"lon1":10,"lat0":4,"lat1":17}},{"id":"africa-north","name":"Egypt & North Africa","short":"Egypt & N.","query":{"regions":["africa.north"]},"anchor":{"lon0":-10,"lon1":35,"lat0":22,"lat1":34}},{"id":"africa-east","name":"East Africa & Horn","short":"East","query":{"regions":["africa.east"]},"anchor":{"lon0":32,"lon1":51,"lat0":-12,"lat1":15}},{"id":"africa-south","name":"Central & Southern Africa","short":"South","query":{"regions":["africa.central-southern"]},"anchor":{"lon0":10,"lon1":35,"lat0":-34,"lat1":-5}}]},{"id":"middle-east","name":"Middle East","query":{"regions":["middle-east"]},"mid":true,"anchor":{"lon0":34,"lon1":56,"lat0":13,"lat1":40}},{"id":"south-asia","name":"South Asia","query":{"regions":["asia.south"]},"anchor":{"lon0":65,"lon1":92,"lat0":6,"lat1":34}},{"id":"east-asia","name":"East Asia","query":{"regions":["asia.east","asia.southeast","asia.steppe"]},"anchor":{"lon0":100,"lon1":142,"lat0":18,"lat1":44},"children":[{"id":"ea-steppe","name":"Eurasian Steppe","short":"Steppe","query":{"regions":["asia.steppe"]},"anchor":{"lon0":60,"lon1":110,"lat0":40,"lat1":52}},{"id":"ea-china","name":"China","short":"China","query":{"regions":["asia.east.china"]},"anchor":{"lon0":100,"lon1":122,"lat0":20,"lat1":42}},{"id":"ea-japan","name":"Japan","short":"Japan","query":{"regions":["asia.east.japan"]},"anchor":{"lon0":130,"lon1":143,"lat0":31,"lat1":44}},{"id":"ea-southeast","name":"Southeast Asia","short":"SE Asia","query":{"regions":["asia.southeast"]},"anchor":{"lon0":95,"lon1":110,"lat0":-8,"lat1":18}}]}],"events":[{"id":"maize-farming","title":"Maize domesticated in Mesoamerica","short":"Maize farming","start":-7000,"circa":true,"region":"americas.mesoamerica","themes":["tech"],"tier":1},{"id":"olmec-rise","title":"Olmec civilization emerges","short":"Olmec rise","start":-1400,"circa":true,"region":"americas.mesoamerica","themes":["culture"],"tier":1},{"id":"monte-alban","title":"Zapotec Monte Albán founded","short":"Monte Albán","start":-400,"circa":true,"region":"americas.mesoamerica","themes":["politics"],"tier":3},{"id":"maya-classic","title":"Maya Classic period begins","short":"Maya Classic","start":250,"region":"americas.mesoamerica","themes":["culture"],"tier":1},{"id":"teotihuacan-peak","title":"Teotihuacan at its peak","short":"Teotihuacan","start":450,"circa":true,"region":"americas.mesoamerica","themes":["culture"],"tier":2},{"id":"maya-collapse","title":"Maya Classic collapse","short":"Maya collapse","start":900,"circa":true,"region":"americas.mesoamerica","themes":["crisis"],"tier":2},{"id":"toltec-tula","title":"Toltec Tula rises","short":"Toltec Tula","start":950,"circa":true,"region":"americas.mesoamerica","themes":["politics"],"tier":3},{"id":"tenochtitlan-founded","title":"Tenochtitlan founded","start":1345,"region":"americas.mesoamerica","themes":["politics"],"tier":3},{"id":"aztec-empire","title":"Aztec Triple Alliance formed","short":"Aztec Empire","start":1428,"region":"americas.mesoamerica","themes":["politics"],"tier":1},{"id":"cortes-conquest","title":"Cortés takes Tenochtitlan","short":"Spanish conquest","start":1521,"region":"americas.mesoamerica","themes":["war"],"tier":1},{"id":"popol-vuh","title":"Popol Vuh written down","short":"Popol Vuh","start":1550,"circa":true,"region":"americas.mesoamerica","themes":["culture","religion"],"tier":3},{"id":"andes-crops","title":"Potato and quinoa domesticated in the Andes","short":"Andean crops","start":-6000,"circa":true,"region":"americas.andes","themes":["tech"],"tier":2},{"id":"caral-cities","title":"Caral: first cities in the Americas","short":"Caral cities","start":-2600,"circa":true,"region":"americas.andes","themes":["culture"],"tier":1},{"id":"chavin-culture","title":"Chavín culture spreads","short":"Chavín culture","start":-900,"circa":true,"region":"americas.andes","themes":["religion"],"tier":2},{"id":"nazca-lines","title":"Nazca lines begun","short":"Nazca lines","start":100,"circa":true,"region":"americas.andes","themes":["culture"],"tier":3},{"id":"moche-culture","title":"Moche culture flourishes","short":"Moche culture","start":300,"circa":true,"region":"americas.andes","themes":["culture"],"tier":3},{"id":"tiwanaku-wari","title":"Tiwanaku and Wari expand","short":"Tiwanaku & Wari","start":600,"circa":true,"region":"americas.andes","themes":["politics"],"tier":2},{"id":"chimu-kingdom","title":"Chimú kingdom at Chan Chan","short":"Chimú kingdom","start":1200,"circa":true,"region":"americas.andes","themes":["politics"],"tier":3},{"id":"inca-expansion","title":"Inca Empire expands under Pachacuti","short":"Inca expansion","start":1438,"region":"americas.andes","themes":["politics"],"tier":1},{"id":"machu-picchu","title":"Machu Picchu built","short":"Machu Picchu","start":1450,"circa":true,"region":"americas.andes","themes":["culture"],"tier":3},{"id":"pizarro-conquest","title":"Pizarro captures Atahualpa","short":"Inca conquered","start":1532,"region":"americas.andes","themes":["war"],"tier":1},{"id":"cahokia","title":"Cahokia at its height","short":"Cahokia","start":1100,"circa":true,"region":"americas.north","themes":["culture"],"tier":3},{"id":"columbus","title":"Columbus reaches the Americas","short":"Columbus","start":1492,"region":"americas.north","themes":["culture"],"tier":1},{"id":"us-independence","title":"United States declares independence","short":"US independence","start":1776,"region":"americas.north","themes":["politics"],"tier":1},{"id":"haitian-revolution","title":"Haitian Revolution","start":1791,"end":1804,"region":"americas.north","themes":["politics"],"tier":2},{"id":"latin-independence","title":"Spanish American wars of independence","short":"Latin independence","start":1810,"end":1825,"region":"americas","themes":["politics"],"tier":2},{"id":"us-civil-war","title":"US Civil War","start":1861,"end":1865,"region":"americas.north","themes":["war"],"tier":2},{"id":"great-depression","title":"Great Depression begins","short":"Great Depression","start":1929,"region":"americas.north","themes":["crisis"],"tier":2},{"id":"moon-landing","title":"Apollo 11 Moon landing","short":"Moon landing","start":1969,"region":"americas.north","themes":["tech"],"tier":1},{"id":"europe-farming","title":"Farming spreads into Europe","short":"Farming arrives","start":-6000,"circa":true,"region":"europe","themes":["tech"],"tier":2},{"id":"stonehenge","title":"Stonehenge's great trilithons raised","short":"Stonehenge","start":-2500,"circa":true,"region":"europe","themes":["religion","culture"],"tier":3},{"id":"minoan-crete","title":"Minoan palaces rise on Crete","short":"Minoan Crete","start":-2000,"circa":true,"region":"europe","themes":["culture"],"tier":2},{"id":"mycenaean-greece","title":"Mycenaean Greece rises","short":"Mycenaean Greece","start":-1600,"circa":true,"region":"europe","themes":["politics"],"tier":2},{"id":"greek-colonies","title":"Greek colonization of the Mediterranean","short":"Greek colonies","start":-750,"circa":true,"region":"europe","themes":["culture"],"tier":3},{"id":"homer","title":"Homer's Iliad and Odyssey take form","short":"Homer","start":-700,"circa":true,"region":"europe","themes":["culture"],"tier":2},{"id":"rome-founded","title":"Rome founded (traditional)","short":"Rome founded","start":-753,"circa":true,"region":"europe","themes":["politics"],"tier":2},{"id":"roman-republic","title":"Roman Republic founded","short":"Roman Republic","start":-509,"circa":true,"region":"europe","themes":["politics"],"tier":2},{"id":"salamis","title":"Battle of Salamis","start":-480,"region":"europe","themes":["war"],"tier":3},{"id":"classical-athens","title":"Classical Athens: democracy & philosophy","short":"Classical Athens","start":-450,"circa":true,"region":"europe","themes":["culture"],"tier":1},{"id":"gaul-conquered","title":"Caesar conquers Gaul","short":"Gaul conquered","start":-52,"region":"europe","themes":["war"],"tier":3},{"id":"caesar-assassinated","title":"Caesar assassinated","start":-44,"region":"europe","themes":["politics"],"tier":2},{"id":"constantine","title":"Constantine legalizes Christianity","short":"Constantine","start":313,"region":"europe","themes":["religion"],"tier":1},{"id":"fall-of-rome","title":"Western Roman Empire falls","short":"Fall of Rome","start":476,"region":"europe","themes":["politics"],"tier":1},{"id":"hagia-sophia","title":"Hagia Sophia built","short":"Hagia Sophia","start":537,"region":"europe","themes":["culture"],"tier":3},{"id":"viking-age","title":"Viking raids begin at Lindisfarne","short":"Viking age","start":793,"region":"europe","themes":["war"],"tier":2},{"id":"charlemagne","title":"Charlemagne crowned emperor","short":"Charlemagne","start":800,"region":"europe","themes":["politics"],"tier":1},{"id":"great-schism","title":"East–West Schism","short":"Great Schism","start":1054,"region":"europe","themes":["religion"],"tier":3},{"id":"norman-conquest","title":"Norman conquest of England","short":"Norman conquest","start":1066,"region":"europe","themes":["war"],"tier":3},{"id":"first-university","title":"University of Bologna founded","short":"First university","start":1088,"region":"europe","themes":["culture"],"tier":3},{"id":"first-crusade","title":"First Crusade sets out","short":"First Crusade","start":1096,"region":"europe","themes":["war"],"tier":2},{"id":"magna-carta","title":"Magna Carta sealed","short":"Magna Carta","start":1215,"region":"europe","themes":["politics"],"tier":3},{"id":"black-death","title":"Black Death reaches Europe","short":"Black Death","start":1347,"end":1351,"region":"europe","themes":["crisis"],"tier":1},{"id":"printing-press","title":"Gutenberg’s printing press","short":"Printing press","start":1440,"circa":true,"region":"europe","themes":["tech"],"tier":1},{"id":"renaissance","title":"Italian Renaissance in full bloom","short":"Renaissance","start":1450,"circa":true,"region":"europe","themes":["culture"],"tier":2},{"id":"reformation","title":"Luther’s 95 theses","short":"Reformation","start":1517,"region":"europe","themes":["religion"],"tier":2},{"id":"copernicus","title":"Copernicus publishes heliocentrism","short":"Copernicus","start":1543,"region":"europe","themes":["tech"],"tier":2},{"id":"shakespeare","title":"Shakespeare writes Hamlet","short":"Shakespeare","start":1600,"circa":true,"region":"europe","themes":["culture"],"tier":2},{"id":"newton","title":"Newton’s Principia","short":"Newton","start":1687,"region":"europe","themes":["tech"],"tier":3},{"id":"industrial-revolution","title":"Industrial Revolution begins","short":"Industrialization","start":1760,"circa":true,"region":"europe","themes":["tech"],"tier":1},{"id":"french-revolution","title":"French Revolution","start":1789,"region":"europe","themes":["politics"],"tier":1},{"id":"napoleon","title":"Napoleon crowned emperor","short":"Napoleon","start":1804,"region":"europe","themes":["politics"],"tier":2},{"id":"darwin","title":"Darwin’s On the Origin of Species","short":"Darwin","start":1859,"region":"europe","themes":["tech"],"tier":2},{"id":"germany-unified","title":"Germany unified","start":1871,"region":"europe","themes":["politics"],"tier":3},{"id":"ww1","title":"First World War","start":1914,"end":1918,"region":"europe","themes":["war"],"tier":1},{"id":"russian-revolution","title":"Russian Revolution","start":1917,"region":"europe","themes":["politics"],"tier":2},{"id":"ww2","title":"Second World War","start":1939,"end":1945,"region":"europe","themes":["war"],"tier":1},{"id":"berlin-wall-falls","title":"Fall of the Berlin Wall","short":"Berlin Wall falls","start":1989,"region":"europe","themes":["politics"],"tier":2},{"id":"www","title":"World Wide Web released","short":"World Wide Web","start":1991,"region":"europe","themes":["tech"],"tier":2},{"id":"european-union","title":"European Union founded (Maastricht)","short":"European Union","start":1993,"region":"europe","themes":["politics"],"tier":3},{"id":"nok-ironworking","title":"Nok culture ironworking","short":"Nok ironworking","start":-600,"circa":true,"region":"africa.west","themes":["tech"],"tier":2},{"id":"ghana-empire","title":"Ghana Empire rises","short":"Ghana Empire","start":300,"circa":true,"region":"africa.west","themes":["politics"],"tier":1},{"id":"almoravid-raids","title":"Almoravids pressure Ghana","short":"Almoravid raids","start":1076,"region":"africa.west","themes":["war"],"tier":3},{"id":"mali-empire","title":"Sundiata founds the Mali Empire","short":"Mali Empire","start":1235,"region":"africa.west","themes":["politics"],"tier":1},{"id":"mansa-musa","title":"Mansa Musa’s hajj","start":1324,"region":"africa.west","themes":["culture"],"tier":2},{"id":"benin-bronzes","title":"Benin City and its bronzes flourish","short":"Benin bronzes","start":1450,"circa":true,"region":"africa.west","themes":["culture"],"tier":3},{"id":"songhai-empire","title":"Songhai Empire expands","short":"Songhai Empire","start":1464,"region":"africa.west","themes":["politics"],"tier":2},{"id":"timbuktu-scholarship","title":"Sankoré scholarship peaks in Timbuktu","short":"Timbuktu","start":1500,"circa":true,"region":"africa.west","themes":["culture"],"tier":3},{"id":"slave-trade","title":"Atlantic slave trade begins","short":"Slave trade begins","start":1526,"circa":true,"region":"africa.west","themes":["crisis"],"tier":1},{"id":"songhai-falls","title":"Moroccan invasion breaks Songhai","short":"Songhai falls","start":1591,"region":"africa.west","themes":["war"],"tier":2},{"id":"green-sahara","title":"Cattle herders of the green Sahara","short":"Green Sahara","start":-6000,"circa":true,"region":"africa.north","themes":["culture"],"tier":2},{"id":"egypt-unified","title":"Egypt unified under Narmer","short":"Egypt unified","start":-3100,"circa":true,"region":"africa.north","themes":["politics"],"tier":1},{"id":"great-pyramid","title":"Great Pyramid of Giza","short":"Great Pyramid","start":-2560,"circa":true,"region":"africa.north","themes":["culture"],"tier":1},{"id":"new-kingdom","title":"New Kingdom begins","short":"New Kingdom","start":-1550,"region":"africa.north","themes":["politics"],"tier":2},{"id":"kadesh","title":"Battle of Kadesh","start":-1274,"region":"africa.north","themes":["war"],"tier":3},{"id":"carthage-founded","title":"Carthage founded","start":-814,"circa":true,"region":"africa.north","themes":["politics"],"tier":2},{"id":"kerma-kingdom","title":"Kingdom of Kerma rises in Nubia","short":"Kerma","start":-2500,"circa":true,"region":"africa.east","themes":["politics"],"tier":2},{"id":"kush-conquers-egypt","title":"Kush conquers Egypt","start":-728,"region":"africa.east","themes":["politics"],"tier":2},{"id":"meroe-capital","title":"Kush moves its capital to Meroë","short":"Meroë","start":-590,"circa":true,"region":"africa.east","themes":["politics"],"tier":3},{"id":"alexandria-founded","title":"Alexandria founded","start":-331,"region":"africa.north","themes":["culture"],"tier":2},{"id":"punic-wars","title":"Punic Wars: Rome vs Carthage","short":"Punic Wars","start":-264,"end":-146,"region":"africa.north","themes":["war"],"tier":3},{"id":"roman-egypt","title":"Cleopatra dies; Rome annexes Egypt","short":"Roman Egypt","start":-30,"region":"africa.north","themes":["politics"],"tier":1},{"id":"bantu-expansion","title":"Bantu expansion reaches southern Africa","short":"Bantu expansion","start":300,"circa":true,"region":"africa.central-southern","themes":["culture"],"tier":2},{"id":"christian-aksum","title":"Aksum adopts Christianity","short":"Christian Aksum","start":340,"circa":true,"region":"africa.east","themes":["religion"],"tier":2},{"id":"arab-conquest-egypt","title":"Arab conquest of Egypt","short":"Arab conquest","start":641,"region":"africa.north","themes":["war"],"tier":1},{"id":"cairo-founded","title":"Cairo founded by the Fatimids","short":"Cairo founded","start":969,"region":"africa.north","themes":["politics"],"tier":2},{"id":"swahili-coast","title":"Swahili coast cities flourish","short":"Swahili coast","start":1100,"circa":true,"region":"africa.east","themes":["culture"],"tier":2},{"id":"lalibela","title":"Lalibela’s rock-hewn churches","short":"Lalibela","start":1200,"circa":true,"region":"africa.east","themes":["religion"],"tier":3},{"id":"great-zimbabwe","title":"Great Zimbabwe built","short":"Great Zimbabwe","start":1250,"circa":true,"region":"africa.central-southern","themes":["culture"],"tier":2},{"id":"mamluk-rule","title":"Mamluks take power","short":"Mamluk rule","start":1250,"region":"africa.north","themes":["politics"],"tier":3},{"id":"ibn-battuta","title":"Ibn Battuta begins his travels","short":"Ibn Battuta","start":1325,"region":"africa.north","themes":["culture"],"tier":3},{"id":"kongo-kingdom","title":"Kingdom of Kongo founded","short":"Kongo kingdom","start":1390,"circa":true,"region":"africa.central-southern","themes":["politics"],"tier":3},{"id":"suez-canal","title":"Suez Canal opens","short":"Suez Canal","start":1869,"region":"africa.north","themes":["tech"],"tier":2},{"id":"berlin-conference","title":"Berlin Conference divides Africa","short":"Africa partitioned","start":1884,"region":"africa","themes":["politics"],"tier":1},{"id":"year-of-africa","title":"African decolonization peaks (Year of Africa)","short":"Decolonization","start":1960,"region":"africa","themes":["politics"],"tier":1},{"id":"apartheid-ends","title":"Apartheid ends in South Africa","short":"Apartheid ends","start":1994,"region":"africa.central-southern","themes":["politics"],"tier":2},{"id":"gobekli-tepe","title":"Göbekli Tepe's stone circles raised","short":"Göbekli Tepe","start":-9500,"circa":true,"region":"middle-east","themes":["religion","culture"],"tier":1},{"id":"farming-begins","title":"Farming begins in the Fertile Crescent","short":"First farming","start":-9500,"circa":true,"region":"middle-east","themes":["tech"],"tier":1},{"id":"jericho-wall","title":"Jericho's wall and tower built","short":"Jericho","start":-8000,"circa":true,"region":"middle-east","themes":["culture"],"tier":2},{"id":"catalhoyuk","title":"Çatalhöyük flourishes","short":"Çatalhöyük","start":-7000,"circa":true,"region":"middle-east","themes":["culture"],"tier":3},{"id":"uruk-city","title":"Uruk grows into the world's first great city","short":"Uruk","start":-3500,"circa":true,"region":"middle-east","themes":["culture"],"tier":1},{"id":"writing-invented","title":"Writing invented in Sumer","short":"Writing invented","start":-3200,"circa":true,"region":"middle-east","themes":["tech"],"tier":1},{"id":"akkadian-empire","title":"Sargon forges the Akkadian Empire","short":"Akkadian Empire","start":-2334,"circa":true,"region":"middle-east","themes":["politics"],"tier":2},{"id":"ziggurat-ur","title":"Great Ziggurat of Ur built","short":"Ziggurat of Ur","start":-2100,"circa":true,"region":"middle-east","themes":["religion"],"tier":3},{"id":"gilgamesh","title":"Epic of Gilgamesh composed","short":"Gilgamesh","start":-1800,"circa":true,"region":"middle-east","themes":["culture"],"tier":2},{"id":"hammurabi-code","title":"Hammurabi’s law code","short":"Hammurabi’s code","start":-1754,"circa":true,"region":"middle-east","themes":["politics"],"tier":1},{"id":"alphabet-spreads","title":"Phoenician alphabet spreads","short":"Alphabet spreads","start":-1050,"circa":true,"region":"middle-east","themes":["tech"],"tier":2},{"id":"david-solomon","title":"Kingdom of David and Solomon","short":"David & Solomon","start":-1000,"circa":true,"region":"middle-east","themes":["politics"],"tier":3},{"id":"assyrian-empire","title":"Assyrian Empire at its height","short":"Assyrian Empire","start":-670,"circa":true,"region":"middle-east","themes":["politics"],"tier":2},{"id":"babylon-rebuilt","title":"Nebuchadnezzar II rebuilds Babylon","short":"Babylon rebuilt","start":-605,"region":"middle-east","themes":["politics"],"tier":3},{"id":"persian-empire","title":"Cyrus founds the Persian Empire","short":"Persian Empire","start":-550,"region":"middle-east","themes":["politics"],"tier":1},{"id":"alexander","title":"Alexander topples Persia","short":"Alexander","start":-330,"region":"middle-east","themes":["war"],"tier":1},{"id":"jesus","title":"Ministry of Jesus of Nazareth","short":"Jesus of Nazareth","start":30,"circa":true,"region":"middle-east","themes":["religion"],"tier":1},{"id":"temple-destroyed","title":"Second Temple destroyed","short":"Temple destroyed","start":70,"region":"middle-east","themes":["religion"],"tier":2},{"id":"sasanian-empire","title":"Sasanian Empire founded","short":"Sasanian Empire","start":224,"region":"middle-east","themes":["politics"],"tier":2},{"id":"islam-begins","title":"The Hijra: Islam begins","short":"Islam begins","start":622,"region":"middle-east","themes":["religion"],"tier":1},{"id":"karbala","title":"Battle of Karbala; Sunni–Shia split deepens","short":"Karbala","start":680,"region":"middle-east","themes":["religion"],"tier":2},{"id":"abbasid-baghdad","title":"Baghdad founded; Abbasid golden age","short":"Abbasid Baghdad","start":762,"region":"middle-east","themes":["culture"],"tier":1},{"id":"arabian-nights","title":"One Thousand and One Nights takes shape","short":"1001 Nights","start":850,"circa":true,"region":"middle-east","themes":["culture"],"tier":3},{"id":"shahnameh","title":"Ferdowsi completes the Shahnameh","short":"Shahnameh","start":1010,"region":"middle-east","themes":["culture"],"tier":3},{"id":"ibn-sina","title":"Ibn Sina’s Canon of Medicine","short":"Ibn Sina","start":1025,"circa":true,"region":"middle-east","themes":["tech"],"tier":3},{"id":"seljuks-rise","title":"Seljuk Turks take Baghdad","short":"Seljuks rise","start":1055,"region":"middle-east","themes":["politics"],"tier":3},{"id":"baghdad-sacked","title":"Mongols sack Baghdad","short":"Baghdad sacked","start":1258,"region":"middle-east","themes":["war"],"tier":1},{"id":"ottoman-rise","title":"Ottoman state founded","short":"Ottoman rise","start":1299,"circa":true,"region":"middle-east","themes":["politics"],"tier":2},{"id":"timur","title":"Timur’s conquests","short":"Timur","start":1370,"end":1405,"region":"middle-east","themes":["war"],"tier":2},{"id":"constantinople-falls","title":"Ottomans take Constantinople","short":"Constantinople","start":1453,"region":"middle-east","themes":["war"],"tier":1},{"id":"safavid-iran","title":"Safavid dynasty unifies Iran","short":"Safavid Iran","start":1501,"region":"middle-east","themes":["politics"],"tier":2},{"id":"persian-oil","title":"Oil struck in Persia","short":"Persian oil","start":1908,"region":"middle-east","themes":["tech"],"tier":2},{"id":"ottoman-collapse","title":"Ottoman Empire collapses","short":"Ottoman collapse","start":1918,"region":"middle-east","themes":["politics"],"tier":2},{"id":"israel-founded","title":"Israel founded; first Arab–Israeli war","short":"Israel founded","start":1948,"region":"middle-east","themes":["politics"],"tier":2},{"id":"iranian-revolution","title":"Iranian Revolution","start":1979,"region":"middle-east","themes":["politics"],"tier":2},{"id":"mehrgarh","title":"Farming begins at Mehrgarh","short":"Mehrgarh","start":-7000,"circa":true,"region":"asia.south","themes":["tech"],"tier":2},{"id":"indus-cities","title":"Indus cities at their height","short":"Indus cities","start":-2600,"circa":true,"region":"asia.south","themes":["culture"],"tier":1},{"id":"vedic-age","title":"Vedic age begins","short":"Vedic age","start":-1500,"circa":true,"region":"asia.south","themes":["religion"],"tier":2},{"id":"buddha","title":"Buddha’s enlightenment","short":"The Buddha","start":-528,"circa":true,"region":"asia.south","themes":["religion"],"tier":1},{"id":"mahavira","title":"Mahavira and the rise of Jainism","short":"Mahavira","start":-527,"circa":true,"region":"asia.south","themes":["religion"],"tier":3},{"id":"indian-epics","title":"Mahabharata and Ramayana take shape","short":"Indian epics","start":-400,"circa":true,"region":"asia.south","themes":["culture","religion"],"tier":2},{"id":"alexander-indus","title":"Alexander reaches the Indus","short":"Indus campaign","start":-326,"region":"asia.south","themes":["war"],"tier":3},{"id":"maurya-empire","title":"Chandragupta founds the Maurya","short":"Maurya Empire","start":-321,"region":"asia.south","themes":["politics"],"tier":2},{"id":"ashoka","title":"Ashoka embraces Buddhism","short":"Ashoka","start":-261,"circa":true,"region":"asia.south","themes":["religion"],"tier":1},{"id":"kushan-empire","title":"Kanishka rules the Kushan Empire","short":"Kushan Empire","start":127,"circa":true,"region":"asia.south","themes":["politics"],"tier":3},{"id":"gupta-golden-age","title":"Gupta golden age begins","short":"Gupta golden age","start":320,"region":"asia.south","themes":["culture"],"tier":2},{"id":"kalidasa","title":"Kālidāsa writes Shakuntala","short":"Kālidāsa","start":400,"circa":true,"region":"asia.south","themes":["culture"],"tier":3},{"id":"nalanda","title":"Nalanda: great Buddhist university","short":"Nalanda","start":500,"circa":true,"region":"asia.south","themes":["culture"],"tier":3},{"id":"chola-empire","title":"Chola naval empire at its peak","short":"Chola Empire","start":1025,"region":"asia.south","themes":["politics"],"tier":2},{"id":"delhi-sultanate","title":"Delhi Sultanate established","short":"Delhi Sultanate","start":1206,"region":"asia.south","themes":["politics"],"tier":2},{"id":"vijayanagara","title":"Vijayanagara Empire founded","short":"Vijayanagara","start":1336,"region":"asia.south","themes":["politics"],"tier":3},{"id":"sikhism","title":"Guru Nanak founds Sikhism","short":"Sikhism founded","start":1500,"circa":true,"region":"asia.south","themes":["religion"],"tier":2},{"id":"mughal-empire","title":"Babur founds the Mughal Empire","short":"Mughal Empire","start":1526,"region":"asia.south","themes":["politics"],"tier":1},{"id":"akbar","title":"Akbar’s reign begins","short":"Akbar","start":1556,"region":"asia.south","themes":["politics"],"tier":2},{"id":"taj-mahal","title":"Taj Mahal begun","short":"Taj Mahal","start":1632,"region":"asia.south","themes":["culture"],"tier":3},{"id":"british-raj","title":"British Raj begins","short":"British Raj","start":1858,"region":"asia.south","themes":["politics"],"tier":1},{"id":"salt-march","title":"Gandhi’s Salt March","short":"Salt March","start":1930,"region":"asia.south","themes":["politics"],"tier":3},{"id":"india-independence","title":"Independence and Partition","short":"Independence","start":1947,"region":"asia.south","themes":["politics"],"tier":1},{"id":"jomon-pottery","title":"Jōmon pottery — among the world's earliest","short":"Jōmon pottery","start":-10500,"circa":true,"region":"asia.east.japan","themes":["tech","culture"],"tier":2},{"id":"rice-farming","title":"Rice domesticated in the Yangtze valley","short":"Rice farming","start":-7000,"circa":true,"region":"asia.east.china","themes":["tech"],"tier":1},{"id":"shang-dynasty","title":"Shang dynasty; oracle bones","short":"Shang dynasty","start":-1600,"circa":true,"region":"asia.east.china","themes":["politics"],"tier":1},{"id":"zhou-conquest","title":"Zhou conquest; Mandate of Heaven","short":"Zhou conquest","start":-1046,"region":"asia.east.china","themes":["politics"],"tier":2},{"id":"confucius","title":"Confucius born","short":"Confucius","start":-551,"region":"asia.east.china","themes":["culture"],"tier":1},{"id":"qin-unification","title":"Qin Shi Huang unifies China","short":"Qin unification","start":-221,"region":"asia.east.china","themes":["politics"],"tier":1},{"id":"han-dynasty","title":"Han dynasty founded","short":"Han dynasty","start":-202,"region":"asia.east.china","themes":["politics"],"tier":2},{"id":"buddhism-china","title":"Buddhism reaches China","short":"Buddhism in China","start":65,"circa":true,"region":"asia.east.china","themes":["religion"],"tier":2},{"id":"papermaking","title":"Cai Lun perfects papermaking","short":"Papermaking","start":105,"region":"asia.east.china","themes":["tech"],"tier":2},{"id":"three-kingdoms","title":"Han falls; Three Kingdoms era begins","short":"Three Kingdoms","start":220,"region":"asia.east.china","themes":["war"],"tier":3},{"id":"grand-canal","title":"Grand Canal completed","short":"Grand Canal","start":609,"region":"asia.east.china","themes":["tech"],"tier":2},{"id":"tang-dynasty","title":"Tang dynasty founded","short":"Tang dynasty","start":618,"region":"asia.east.china","themes":["politics"],"tier":1},{"id":"tang-poets","title":"Li Bai and Du Fu: Tang poetry's golden age","short":"Tang poets","start":750,"circa":true,"region":"asia.east.china","themes":["culture"],"tier":3},{"id":"an-lushan","title":"An Lushan rebellion devastates Tang China","short":"An Lushan revolt","start":755,"end":763,"region":"asia.east.china","themes":["crisis"],"tier":3},{"id":"heian-kyoto","title":"Heian-kyō (Kyoto) founded","short":"Heian Kyoto","start":794,"region":"asia.east.japan","themes":["culture"],"tier":3},{"id":"khmer-empire","title":"Khmer Empire founded","short":"Khmer Empire","start":802,"region":"asia.southeast","themes":["politics"],"tier":3},{"id":"diamond-sutra","title":"Diamond Sutra: earliest dated printed book","short":"Diamond Sutra","start":868,"region":"asia.east.china","themes":["tech"],"tier":3},{"id":"pillow-book","title":"Sei Shōnagon completes The Pillow Book","short":"Pillow Book","start":1002,"circa":true,"region":"asia.east.japan","themes":["culture"],"tier":3},{"id":"tale-of-genji","title":"The Tale of Genji written","short":"Tale of Genji","start":1010,"circa":true,"region":"asia.east.japan","themes":["culture"],"tier":3},{"id":"song-inventions","title":"Song China: gunpowder & movable type","short":"Song inventions","start":1040,"circa":true,"region":"asia.east.china","themes":["tech"],"tier":2},{"id":"angkor-wat","title":"Angkor Wat built","short":"Angkor Wat","start":1120,"circa":true,"region":"asia.southeast","themes":["culture"],"tier":2},{"id":"genghis-khan","title":"Genghis Khan unites the Mongols","short":"Genghis Khan","start":1206,"region":"asia.steppe","themes":["war"],"tier":1},{"id":"yuan-dynasty","title":"Kublai Khan founds the Yuan","short":"Yuan dynasty","start":1271,"region":"asia.east.china","themes":["politics"],"tier":1},{"id":"mongols-repelled","title":"Mongol invasions of Japan repelled","short":"Mongols repelled","start":1281,"region":"asia.east.japan","themes":["war"],"tier":3},{"id":"treasure-voyages","title":"Zheng He’s treasure voyages begin","short":"Treasure voyages","start":1405,"region":"asia.east.china","themes":["culture"],"tier":2},{"id":"great-wall","title":"Ming rebuilds the Great Wall","short":"Great Wall","start":1470,"circa":true,"region":"asia.east.china","themes":["politics"],"tier":3},{"id":"tokugawa","title":"Tokugawa shogunate begins","short":"Tokugawa era","start":1603,"region":"asia.east.japan","themes":["politics"],"tier":2},{"id":"qing-dynasty","title":"Qing dynasty established","short":"Qing dynasty","start":1644,"region":"asia.east.china","themes":["politics"],"tier":2},{"id":"basho","title":"Bashō's Narrow Road to the Deep North","short":"Bashō","start":1689,"region":"asia.east.japan","themes":["culture"],"tier":3},{"id":"red-chamber","title":"Cao Xueqin's Dream of the Red Chamber","short":"Red Chamber","start":1760,"circa":true,"region":"asia.east.china","themes":["culture"],"tier":3},{"id":"hokusai","title":"Hokusai prints the Great Wave","short":"Great Wave","start":1831,"circa":true,"region":"asia.east.japan","themes":["culture"],"tier":3},{"id":"opium-war","title":"First Opium War","start":1839,"end":1842,"region":"asia.east.china","themes":["war"],"tier":2},{"id":"taiping","title":"Taiping Rebellion","start":1850,"end":1864,"region":"asia.east.china","themes":["crisis"],"tier":2},{"id":"meiji","title":"Meiji Restoration","start":1868,"region":"asia.east.japan","themes":["politics"],"tier":1},{"id":"prc-founded","title":"People’s Republic founded","short":"People’s Republic","start":1949,"region":"asia.east.china","themes":["politics"],"tier":1},{"id":"reform-era","title":"Deng Xiaoping’s reforms begin","short":"Reform era","start":1978,"region":"asia.east.china","themes":["politics"],"tier":2}],"threads":[{"id":"written-word","title":"The written word","short":"Writing","summary":"How durable writing was invented in Sumer, alphabetized in the Levant, papered in Han China, block-printed under the Tang, and pressed in Mainz.","members":["writing-invented","alphabet-spreads","papermaking","diamond-sutra","printing-press"],"themes":["tech"]},{"id":"spread-of-buddhism","title":"The spread of Buddhism","short":"Buddhism","summary":"From the Buddha's teaching in India through Ashoka's patronage to its arrival in Han China and the first printed sutra.","members":["buddha","ashoka","buddhism-china","diamond-sutra"],"themes":["religion"]},{"id":"mongol-world","title":"The Mongol world","short":"Mongols","summary":"The steppe conquests that stitched Eurasia together — and what traveled the routes they opened, from dynasties to the plague.","members":["genghis-khan","baghdad-sacked","yuan-dynasty","black-death","timur"],"themes":["war"]},{"id":"atlantic-exchange","title":"The Atlantic exchange","short":"Atlantic","summary":"Contact, conquest, and the forced crossings that bound four continents into one Atlantic world.","members":["columbus","cortes-conquest","slave-trade","pizarro-conquest"],"themes":["crisis"]}]};
+// __DATA_END__
+const THEMES = DATA.themes, REGIONS = DATA.regions;
+// Lanes-as-queries: an event belongs to the lane whose query lists its region
+// id or an ancestor of it (prefix match on the dotted region hierarchy).
+const LANES = DATA.lanes.map(l => ({ ...l, ...l.anchor, _children: (l.children || []).map(c => ({ ...c, ...c.anchor })) }));
+const regionIn = (ev, q) => q.regions.some(p => ev.region === p || ev.region.startsWith(p + '.'));
+const laneOf = ev => LANES.findIndex(ln => regionIn(ev, ln.query));
+// _sub = child column within a splittable lane (docs/specs/lane-split.md);
+// -1 = none, incl. genuinely continent-wide events (center-anchor rule)
+const EVENTS = DATA.events.map(e => {
+  const _lane = laneOf(e);
+  return { ...e, _lane, _sub: _lane >= 0 ? LANES[_lane]._children.findIndex(c => regionIn(e, c.query)) : -1 };
+}).filter(e => e._lane >= 0);
+LANES.forEach((ln, i) => ln._children.forEach((c, k) => {
+  c._count = EVENTS.filter(e => e._lane === i && e._sub === k).length;
+}));
+// child columns keep the family hue, faded in steps (theme-aware via --surface)
+const CHILD_MIX = [100, 70, 46, 30];
+const laneColor = (i, k = -1) =>
+  k < 0 ? `var(--s${i + 1})` : `color-mix(in srgb, var(--s${i + 1}) ${CHILD_MIX[k] ?? 30}%, var(--surface))`;
+// Curated cross-lane threads (docs/specs/cross-lane-threads.md): ordered chains
+// of canon events spanning ≥2 lanes, validated by build.mjs.
+const THREADS = DATA.threads || [];
+
+// Stylized low-poly continents, [lon, lat] — deliberately rough, poster-style.
+const LAND = [
+  // North & Central America
+  [[-117,68],[-95,70],[-80,66],[-70,60],[-60,52],[-55,49],[-66,44],[-75,35],[-81,30],[-90,29],[-96,26],[-97,21],[-94,17],[-88,15],[-83,10],[-79,8],[-85,12],[-95,17],[-105,23],[-110,27],[-117,34]],
+  // South America
+  [[-77,8],[-72,11],[-64,10],[-52,4],[-44,-2],[-35,-7],[-39,-13],[-48,-25],[-53,-34],[-58,-39],[-64,-41],[-71,-38],[-70,-18],[-76,-10],[-81,-4],[-78,2]],
+  // Africa
+  [[-17,15],[-10,6],[0,5],[9,4],[10,-1],[14,-8],[12,-18],[15,-28],[19,-34],[27,-33],[33,-26],[36,-15],[40,-11],[41,-2],[44,1],[51,11],[44,11],[39,15],[37,22],[33,28],[32,31],[25,32],[18,33],[10,37],[0,36],[-6,35],[-10,31],[-17,21]],
+  // Eurasia
+  [[-10,36],[-9,43],[-5,48],[0,50],[8,54],[5,58],[10,63],[18,69],[30,70],[60,72],[100,73],[140,72],[142,60],[135,45],[128,40],[122,32],[108,20],[104,10],[98,8],[100,14],[94,16],[90,22],[85,20],[80,13],[77,8],[73,16],[68,23],[61,25],[57,26],[56,24],[52,28],[48,29],[48,25],[52,17],[45,12],[43,15],[39,20],[35,29],[34,32],[36,36],[30,41],[27,37],[26,40],[23,38],[20,40],[19,42],[16,41],[18,40],[15,38],[14,42],[12,46],[5,43],[3,41],[0,39],[-2,36]],
+  // Britain & Ireland (one blob)
+  [[-6,50],[-4,54],[-5,58],[-1,57],[1,52]],
+  // Japan
+  [[130,31],[133,34],[137,35],[141,39],[143,44],[140,43],[136,36],[131,33]],
+];
+
+// ---------- Geometry ----------
+const YMIN = -11000, YMAX = 2050;
+// Piecewise year → unit mapping for the time axis: deep prehistory (Neolithic
+// band, before 4000 BCE) is compressed 10× — the vertical analog of the
+// Atlantic LONSEG trick — so Göbekli Tepe fits without crushing recorded
+// history. All view math runs in compressed "u" units; years only at the edges.
+const YSEG = [[-11000, -4000, 0.1], [-4000, 2050, 1]];
+const YBREAK = -4000;
+function yrU(yr) {
+  let u = 0;
+  for (const [a, b, k] of YSEG) {
+    if (yr <= a) break;
+    u += (Math.min(yr, b) - a) * k;
+    if (yr <= b) break;
+  }
+  return u;
+}
+function uYr(u) {
+  for (const [a, b, k] of YSEG) {
+    const du = (b - a) * k;
+    if (u <= du) return a + u / k;
+    u -= du;
+  }
+  return YMAX;
+}
+const U_MAX = yrU(YMAX);
+const AXIS_W = 70, PAD_R = 10;
+// Piecewise longitude → unit mapping; the Atlantic band is compressed 0.3×.
+const LONSEG = [[-118, -33, 1], [-33, -19, 0.3], [-19, 146, 1]];
+const LON_TOTAL = LONSEG.reduce((s, g) => s + (g[1] - g[0]) * g[2], 0);
+function lonU(lon) {
+  let u = 0;
+  for (const [a, b, k] of LONSEG) {
+    if (lon <= a) break;
+    u += (Math.min(lon, b) - a) * k;
+    if (lon <= b) break;
+  }
+  return u;
+}
+const LAT_TOP = 73, LAT_BOT = -42;
+
+// ---------- State ----------
+const state = {
+  dir: 'up',            // 'up' = past at bottom (time flows upward)
+  ppy: 0.1,             // pixels per u-unit (≈ per year in the uncompressed zone)
+  viewLo: 0,            // u at the start edge (bottom if up, top if down)
+  rulerYear: -540,
+  themes: new Set(),    // empty = all
+  hoverLane: -1,
+  highlights: new Set(), // event ids force-shown with a halo (copilot-driven)
+  hlNew: false,          // one render's worth of entry-pop on fresh highlights
+  selected: null,        // event id the user clicked (fed to the copilot as context)
+  thread: null,          // active cross-lane thread: {kind:'curated',id} | {kind:'adhoc',ids,label} | null
+  threadNew: false,      // draw-on plays once, after any glide settles
+  splitLane: null,       // lane id currently split into child columns (single slot)
+};
+
+const el = id => document.getElementById(id);
+const tlwrap = el('tlwrap'), tl = el('tl'), map = el('map'), tip = el('tip');
+const NS = 'http://www.w3.org/2000/svg';
+let W = 800, H = 500, MH = 148;
+
+function svgEl(parent, tag, attrs) {
+  const n = document.createElementNS(NS, tag);
+  for (const k in attrs) n.setAttribute(k, attrs[k]);
+  parent.appendChild(n);
+  return n;
+}
+const PLOT_TOP = 8, PLOT_BOT = 6;
+function lonX(lon) { return AXIS_W + lonU(lon) / LON_TOTAL * (W - AXIS_W - PAD_R); }
+const CONNECT_H = 16; // top strip of the map reserved for lane→territory leader lines
+function latY(lat) { return CONNECT_H + 2 + (LAT_TOP - lat) / (LAT_TOP - LAT_BOT) * (MH - CONNECT_H - 8); }
+function plotH() { return H - PLOT_TOP - PLOT_BOT; }
+function yOfU(u) {
+  return state.dir === 'up'
+    ? H - PLOT_BOT - (u - state.viewLo) * state.ppy
+    : PLOT_TOP + (u - state.viewLo) * state.ppy;
+}
+function yOf(year) { return yOfU(yrU(year)); }
+function uAt(y) {
+  return state.dir === 'up'
+    ? state.viewLo + (H - PLOT_BOT - y) / state.ppy
+    : state.viewLo + (y - PLOT_TOP) / state.ppy;
+}
+function yearAt(y) { return uYr(Math.max(0, Math.min(U_MAX, uAt(y)))); }
+function setViewSoUAt(y, u) {
+  state.viewLo = state.dir === 'up' ? u - (H - PLOT_BOT - y) / state.ppy : u - (y - PLOT_TOP) / state.ppy;
+}
+function setViewSoYearAt(y, yr) { setViewSoUAt(y, yrU(yr)); }
+function fitPpy() { return plotH() / U_MAX; }
+function clampView() {
+  state.ppy = Math.max(fitPpy(), Math.min(3, state.ppy));
+  const span = plotH() / state.ppy;
+  state.viewLo = Math.max(0, Math.min(U_MAX - span, state.viewLo));
+}
+function fmtYear(y) {
+  y = Math.round(y);
+  return y < 0 ? (-y) + ' BCE' : y === 0 ? '1 CE' : y + ' CE';
+}
+function tierCutoff() {
+  return state.ppy >= 0.6 ? 3 : state.ppy >= 0.22 ? 2 : 1;
+}
+function themeOn(ev) { return state.themes.size === 0 || ev.themes.some(t => state.themes.has(t)); }
+
+// The active thread resolved to its member events (chronological). One slot:
+// curated (canon, solid) or ad-hoc (copilot gesture, dashed). Null if none.
+function threadInfo() {
+  if (!state.thread) return null;
+  const cur = state.thread.kind === 'curated';
+  const t = cur ? THREADS.find(x => x.id === state.thread.id) : state.thread;
+  if (!t) return null;
+  const members = (cur ? t.members : t.ids).map(id => EVENTS.find(e => e.id === id)).filter(Boolean);
+  return members.length >= 2 ? { title: cur ? t.title : t.label, adhoc: !cur, members } : null;
+}
+
+// Lane column slots. Non-`mid` lanes sit strictly above their territory; `mid`
+// lanes share their combined x-stretch re-slotted in display order, widths
+// proportional to territory extent (the pragmatic Europe–Africa–MidEast reorder).
+let SLOTS = [];
+function baseLayout() {
+  const slots = [], mids = [];
+  LANES.forEach((ln, i) => {
+    if (ln.mid) mids.push(i);
+    else slots[i] = { x0: lonX(ln.lon0), x1: lonX(ln.lon1) };
+  });
+  if (mids.length) {
+    const gap = 8;
+    const X0 = lonX(Math.min(...mids.map(i => LANES[i].lon0)));
+    const X1 = lonX(Math.max(...mids.map(i => LANES[i].lon1)));
+    const totalLon = mids.reduce((s, i) => s + (LANES[i].lon1 - LANES[i].lon0), 0);
+    const usable = (X1 - X0) - gap * (mids.length - 1);
+    let x = X0;
+    for (const i of mids) {
+      const w = (LANES[i].lon1 - LANES[i].lon0) / totalLon * usable;
+      slots[i] = { x0: x, x1: x + w };
+      x += w + gap;
+    }
+  }
+  return slots;
+}
+// Horizontal zoom (docs/specs/lane-split.md): the split lane borrows width
+// (≈2.4× weight) and every lane re-proportions across the full stretch; the
+// map stays fixed and leader lines carry the lane→territory link.
+function layoutFor(splitId) {
+  const base = baseLayout();
+  const si = LANES.findIndex(l => l.id === splitId);
+  if (si < 0) return base;
+  const order = LANES.map((_, i) => i).sort((a, b) => base[a].x0 - base[b].x0);
+  const X0 = base[order[0]].x0, X1 = Math.max(...base.map(s => s.x1));
+  const gap = 8;
+  const w = i => (base[i].x1 - base[i].x0) * (i === si ? 2.4 : 1);
+  const total = order.reduce((s, i) => s + w(i), 0);
+  const usable = (X1 - X0) - gap * (order.length - 1);
+  const slots = [];
+  let x = X0;
+  for (const i of order) {
+    const wi = w(i) / total * usable;
+    slots[i] = { x0: x, x1: x + wi };
+    x += wi + gap;
+  }
+  return slots;
+}
+function computeSlots() {
+  let slots;
+  if (splitT >= 1) slots = layoutFor(state.splitLane);
+  else {
+    // mid-tween: blend the previous and target layouts
+    const a = layoutFor(splitFrom), b = layoutFor(state.splitLane);
+    const k = splitT < 0.5 ? 4 * splitT ** 3 : 1 - Math.pow(-2 * splitT + 2, 3) / 2;
+    slots = LANES.map((_, i) => ({
+      x0: a[i].x0 + (b[i].x0 - a[i].x0) * k,
+      x1: a[i].x1 + (b[i].x1 - a[i].x1) * k,
+    }));
+  }
+  // child columns subdivide the split lane's current stretch equally
+  const si = LANES.findIndex(l => l.id === state.splitLane);
+  if (si >= 0) {
+    const kids = LANES[si]._children;
+    const gap = 6;
+    const kw = ((slots[si].x1 - slots[si].x0) - gap * (kids.length - 1)) / kids.length;
+    let x = slots[si].x0;
+    slots[si].kids = kids.map(() => { const s = { x0: x, x1: x + kw }; x += kw + gap; return s; });
+  }
+  return slots;
+}
+function laneCx(i) { return (SLOTS[i].x0 + SLOTS[i].x1) / 2; }
+// An event's column: its child column when its lane is split, else the lane
+// center — which for continent-wide events in a split lane is the honest
+// center of the whole stretch (the center-anchor rule).
+function evCx(e) {
+  const s = SLOTS[e._lane];
+  if (s.kids && e._sub >= 0) { const k = s.kids[e._sub]; return (k.x0 + k.x1) / 2; }
+  return laneCx(e._lane);
+}
+function laneGeoCx(i) { return (lonX(LANES[i].lon0) + lonX(LANES[i].lon1)) / 2; }
+
+// ---------- Render: timeline ----------
+function renderTimeline() {
+  tl.innerHTML = '';
+  tl.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  const cut = tierCutoff();
+  const ti = threadInfo();
+  const threadIds = new Set(ti ? ti.members.map(e => e.id) : []);
+  const defs = svgEl(tl, 'defs', {});
+
+  // grid + ticks — step chosen per YSEG segment, since the compressed deep-past
+  // band has 10× fewer pixels per real year than the rest of the axis
+  const steps = [10000, 5000, 2000, 1000, 500, 250, 100, 50, 25, 10];
+  const gGrid = svgEl(tl, 'g', {});
+  const e1 = yearAt(PLOT_TOP), e2 = yearAt(H - PLOT_BOT);
+  const lo = Math.min(e1, e2), hi = Math.max(e1, e2);
+  const marks = new Set();
+  for (const [a, b, k] of YSEG) {
+    if (b < lo || a > hi) continue;
+    let step = steps[0];
+    for (const s of steps) if (s * state.ppy * k >= 64) step = s;
+    const from = Math.max(a, lo), to = Math.min(b, hi);
+    for (let yr = Math.ceil(from / step) * step; yr <= to; yr += step) {
+      if (yr !== YBREAK) marks.add(yr); // the break glyph owns the boundary
+    }
+  }
+  for (const yr of marks) {
+    const y = yOf(yr);
+    svgEl(gGrid, 'line', { x1: AXIS_W, x2: W - PAD_R, y1: y, y2: y, stroke: 'var(--grid)', 'stroke-width': 1 });
+    const t = svgEl(gGrid, 'text', { x: AXIS_W - 8, y: y + 3.5, 'text-anchor': 'end', class: 'tick' });
+    t.textContent = fmtYear(yr);
+  }
+  // axis break at the compression boundary (mirrors the Atlantic break on the map)
+  const by = yOf(YBREAK);
+  if (by > PLOT_TOP - 8 && by < H - PLOT_BOT + 8) {
+    const brk = svgEl(gGrid, 'g', {});
+    svgEl(brk, 'rect', { x: AXIS_W, y: by - 4, width: W - AXIS_W - PAD_R, height: 8, fill: 'var(--surface)' });
+    svgEl(brk, 'line', { x1: AXIS_W - 2, x2: W - PAD_R + 2, y1: by + 1, y2: by - 7, stroke: 'var(--axis)', 'stroke-width': 1.25 });
+    svgEl(brk, 'line', { x1: AXIS_W - 2, x2: W - PAD_R + 2, y1: by + 7, y2: by - 1, stroke: 'var(--axis)', 'stroke-width': 1.25 });
+    const t = svgEl(brk, 'text', { x: AXIS_W - 8, y: by + 3.5, 'text-anchor': 'end', class: 'tick' });
+    t.textContent = '≈';
+    const tt = svgEl(brk, 'title', {});
+    tt.textContent = 'Deep past below this break is time-compressed 10×';
+  }
+
+  // lane bands (start fades in at the column's earliest event); a split lane
+  // draws one band per child column in the family's faded hues
+  const gBands = svgEl(tl, 'g', {});
+  LANES.forEach((ln, i) => {
+    const cols = SLOTS[i].kids
+      ? SLOTS[i].kids.map((s, k) => ({ ...s, color: laneColor(i, k), pool: EVENTS.filter(e => e._lane === i && e._sub === k) }))
+      : [{ ...SLOTS[i], color: laneColor(i), pool: EVENTS.filter(e => e._lane === i) }];
+    cols.forEach((col, k) => {
+      if (!col.pool.length) return;
+      const startYear = Math.min(...col.pool.map(e => e.start)) - 150;
+      const yStart = yOf(startYear), yEnd = yOf(YMAX);
+      const yTop = Math.max(0, Math.min(yStart, yEnd));
+      const yBot = Math.min(H, Math.max(yStart, yEnd));
+      if (yBot <= yTop) return;
+      const gid = 'lg' + i + 'k' + k;
+      const grad = svgEl(defs, 'linearGradient', {
+        id: gid, gradientUnits: 'userSpaceOnUse',
+        x1: 0, x2: 0, y1: yStart, y2: yStart + (state.dir === 'up' ? -120 : 120),
+      });
+      svgEl(grad, 'stop', { offset: 0, 'stop-color': col.color, 'stop-opacity': 0 });
+      svgEl(grad, 'stop', { offset: 0.08, 'stop-color': col.color, 'stop-opacity': 0.08 });
+      svgEl(grad, 'stop', { offset: 1, 'stop-color': col.color, 'stop-opacity': 0.08 });
+      const band = svgEl(gBands, 'rect', { x: col.x0, y: yTop, width: col.x1 - col.x0, height: yBot - yTop, fill: `url(#${gid})` });
+      band.classList.add('laneband', 'l' + i);
+      if (state.hoverLane >= 0 && state.hoverLane !== i) band.classList.add('dim');
+    });
+  });
+
+  // cross-lane thread: one smooth curve through member anchors, past → present
+  // (under the dots, over the bands); label at the path's middle member
+  if (ti) {
+    const pts = ti.members.map(e => ({ x: evCx(e), y: yOf(e.start) }));
+    // Catmull-Rom smoothing, with each control point clamped into its segment's
+    // bounding box so the curve never overshoots sideways past a lane (vertical
+    // runs between same-lane members stay vertical)
+    const clampTo = (v, a, b) => Math.max(Math.min(a, b), Math.min(Math.max(a, b), v));
+    let d = `M ${pts[0].x.toFixed(1)} ${pts[0].y.toFixed(1)}`;
+    for (let i = 0; i < pts.length - 1; i++) {
+      const p0 = pts[Math.max(0, i - 1)], p1 = pts[i], p2 = pts[i + 1], p3 = pts[Math.min(pts.length - 1, i + 2)];
+      const c1x = clampTo(p1.x + (p2.x - p0.x) / 6, p1.x, p2.x), c1y = clampTo(p1.y + (p2.y - p0.y) / 6, p1.y, p2.y);
+      const c2x = clampTo(p2.x - (p3.x - p1.x) / 6, p1.x, p2.x), c2y = clampTo(p2.y - (p3.y - p1.y) / 6, p1.y, p2.y);
+      d += ` C ${c1x.toFixed(1)} ${c1y.toFixed(1)}, ${c2x.toFixed(1)} ${c2y.toFixed(1)}, ${p2.x.toFixed(1)} ${p2.y.toFixed(1)}`;
+    }
+    const gTh = svgEl(tl, 'g', {});
+    const cls = (ti.adhoc ? ' adhoc' : '') + (state.threadNew ? ' threaddraw' : '');
+    svgEl(gTh, 'path', { d, class: 'threadpath under' + cls });
+    // pathLength normalizes the solid draw-on wipe; ad-hoc keeps px-unit dashes
+    svgEl(gTh, 'path', { d, class: 'threadpath over' + cls, ...(ti.adhoc ? {} : { pathLength: 1 }) });
+    const mid = pts[Math.floor((pts.length - 1) / 2)];
+    const flip = mid.x > W - 150; // keep the title on-canvas near the right edge
+    const lbl = svgEl(gTh, 'text', {
+      x: flip ? mid.x - 12 : mid.x + 12, y: mid.y - 9,
+      'text-anchor': flip ? 'end' : 'start',
+      class: 'threadlabel' + (state.threadNew ? ' threaddraw' : ''),
+    });
+    lbl.textContent = ti.title;
+  }
+
+  // lane headers first — staggered into two rows where they'd overlap, and
+  // seeded into the collision map so event labels avoid them. A split lane
+  // shows a "Name ⊟" merge pill plus one header per child column; splittable
+  // lanes carry a ⊞ affordance (click = split / merge).
+  tlwrap.querySelectorAll('.lanehead').forEach(n => n.remove());
+  const occupied = [];
+  const headerRows = [-1e9, -1e9];
+  const heads = [];
+  LANES.forEach((ln, i) => {
+    if (SLOTS[i].kids) {
+      // compact merge pill at the stretch's left edge — a full "Name ⊟" pill
+      // shares its center with a child header and loses the stagger fight
+      heads.push({
+        cx: SLOTS[i].x0 + 22, text: '⊟', lane: i, color: laneColor(i),
+        title: 'Merge ' + ln.name + ' back into one lane',
+        click: () => setSplitLane(null),
+      });
+      SLOTS[i].kids.forEach((s, k) => heads.push({
+        cx: (s.x0 + s.x1) / 2, text: ln._children[k].short || ln._children[k].name,
+        lane: i, color: laneColor(i, k), title: ln._children[k].name,
+      }));
+    } else {
+      const splittable = ln._children.length > 0;
+      heads.push({
+        cx: laneCx(i), text: ln.name + (splittable ? ' ⊞' : ''), lane: i, color: laneColor(i),
+        title: splittable ? 'Split into ' + ln._children.map(c => c.name).join(' · ') : ln.name,
+        click: splittable ? () => setSplitLane(ln.id) : null,
+      });
+    }
+  });
+  heads.sort((a, b) => a.cx - b.cx);
+  for (const h of heads) {
+    const hw = 7 * h.text.length + 36;
+    const row = headerRows[0] <= h.cx - hw / 2 - 6 ? 0 : 1;
+    headerRows[row] = h.cx + hw / 2;
+    const top = 6 + row * 26;
+    occupied.push({ x0: h.cx - hw / 2, x1: h.cx + hw / 2, y0: top, y1: top + 22 });
+    const d = document.createElement('div');
+    d.className = 'lanehead' + (h.click ? ' clickable' : '') + (state.hoverLane >= 0 && state.hoverLane !== h.lane ? ' dim' : '');
+    d.style.left = h.cx + 'px';
+    d.style.top = top + 'px';
+    d.title = h.title;
+    d.innerHTML = `<span class="dotchip" style="background:${h.color}"></span>${h.text}`;
+    d.addEventListener('pointerenter', () => { if (state.hoverLane !== h.lane) { state.hoverLane = h.lane; render(); } });
+    d.addEventListener('pointerleave', () => { if (state.hoverLane !== -1) { state.hoverLane = -1; render(); } });
+    if (h.click) d.addEventListener('click', h.click);
+    tlwrap.appendChild(d);
+  }
+
+  const rulerPx = yOf(state.rulerYear);
+  occupied.push({ x0: 0, x1: 116, y0: rulerPx - 11, y1: rulerPx + 11 });
+
+  // events: dots always render; labels are placed globally across lanes,
+  // era-defining first, suppressed when they'd collide with anything placed
+  const gEv = svgEl(tl, 'g', {});
+  const visible = [];
+  EVENTS.forEach((e, idx) => {
+    const forced = state.highlights.has(e.id) || state.selected === e.id || threadIds.has(e.id);
+    if (!forced && (e.tier > cut || !themeOn(e))) return;
+    const y = yOf(e.start);
+    const y2 = e.end ? yOf(e.end) : null;
+    if (Math.min(y, y2 ?? y) > H + 24 || Math.max(y, y2 ?? y) < -24) return;
+    visible.push({ idx, id: e.id, lane: e._lane, sub: e._sub, year: e.start, tier: e.tier, title: e.short || e.title, y, y2, cx: evCx(e), forced });
+  });
+  for (const o of visible) occupied.push({ x0: o.cx - 8, x1: o.cx + 8, y0: o.y - 8, y1: o.y + 8 });
+  const collides = r => occupied.some(q => r.x0 < q.x1 && r.x1 > q.x0 && r.y0 < q.y1 && r.y1 > q.y0);
+  for (const o of visible.slice().sort((a, b) => (b.forced ? 1 : 0) - (a.forced ? 1 : 0) || a.tier - b.tier || a.year - b.year)) {
+    const est = 6.2 * o.title.length + 16;
+    o.right = o.cx < W - est - 24;
+    const tryRect = right => {
+      const x0 = right ? o.cx + 9 : o.cx - 9 - est;
+      return { x0, x1: x0 + est, y0: o.y - 8, y1: o.y + 8 };
+    };
+    let rect = tryRect(o.right);
+    if (collides(rect)) {
+      const alt = tryRect(!o.right);
+      const fits = o.right ? o.cx - 9 - est > AXIS_W : o.cx + 9 + est < W - 4;
+      if (!collides(alt) && fits) { o.right = !o.right; rect = alt; }
+    }
+    o.label = !collides(rect);
+    if (o.label) occupied.push(rect);
+  }
+  for (const o of visible.sort((a, b) => a.year - b.year)) {
+    const r = o.tier === 1 ? 5 : o.tier === 2 ? 4 : 3;
+    const dimmed = state.hoverLane >= 0 && state.hoverLane !== o.lane;
+    const dotColor = SLOTS[o.lane].kids && o.sub >= 0 ? laneColor(o.lane, o.sub) : laneColor(o.lane);
+    if (o.y2 !== null)
+      svgEl(gEv, 'rect', {
+        x: o.cx - 2.5, y: Math.min(o.y, o.y2), width: 5, height: Math.max(3, Math.abs(o.y2 - o.y)), rx: 2.5,
+        fill: dotColor, opacity: dimmed ? 0.12 : 0.28,
+      });
+    if (state.highlights.has(o.id))
+      svgEl(gEv, 'circle', { cx: o.cx, cy: o.y, r: r + 6, fill: 'none', stroke: `var(--s${o.lane + 1})`, 'stroke-width': 2.5, class: 'hl' + (state.hlNew ? ' hlpop' : '') });
+    if (threadIds.has(o.id)) // lighter than a highlight; steps outward when both apply
+      svgEl(gEv, 'circle', { cx: o.cx, cy: o.y, r: r + (state.highlights.has(o.id) ? 9.5 : 6), fill: 'none', stroke: 'var(--s7)', 'stroke-width': 1.75, opacity: 0.9, class: 'threadring' });
+    if (state.selected === o.id)
+      svgEl(gEv, 'circle', { cx: o.cx, cy: o.y, r: r + 9, fill: 'none', stroke: 'var(--ink)', 'stroke-width': 1.5, 'stroke-dasharray': '3 3', opacity: 0.8 });
+    const onRuler = o.y2 !== null
+      ? rulerPx >= Math.min(o.y, o.y2) - 6 && rulerPx <= Math.max(o.y, o.y2) + 6
+      : Math.abs(o.y - rulerPx) <= 20;
+    if (onRuler)
+      svgEl(gEv, 'circle', { cx: o.cx, cy: o.y, r: r + 4, fill: 'none', stroke: 'var(--ink)', 'stroke-width': 1.25, opacity: 0.55 });
+    svgEl(gEv, 'circle', { cx: o.cx, cy: o.y, r, fill: dotColor, stroke: 'var(--surface)', 'stroke-width': 2, opacity: dimmed ? 0.35 : 1 });
+    if (o.label) {
+      const t = svgEl(gEv, 'text', {
+        x: o.right ? o.cx + 9 : o.cx - 9, y: o.y + 3.5,
+        'text-anchor': o.right ? 'start' : 'end',
+        class: 'evlabel' + (o.tier === 1 ? ' t1' : ''),
+        opacity: dimmed ? 0.35 : 1,
+      });
+      t.textContent = o.title;
+    }
+    const hit = svgEl(gEv, 'circle', { cx: o.cx, cy: o.y, r: 11, fill: 'transparent' });
+    hit.style.cursor = 'pointer';
+    hit.addEventListener('pointerenter', ev => showTip(ev, o.idx));
+    hit.addEventListener('pointermove', ev => moveTip(ev));
+    hit.addEventListener('pointerleave', hideTip);
+    hit.addEventListener('pointerdown', ev => ev.stopPropagation());
+    hit.addEventListener('click', () => {
+      state.selected = state.selected === o.id ? null : o.id;
+      syncSelUI(); render();
+    });
+  }
+
+  // ruler
+  const rp = Math.max(PLOT_TOP, Math.min(H - PLOT_BOT, rulerPx));
+  el('ruler').style.top = rp + 'px';
+  el('rulergrab').style.top = rp + 'px';
+  el('rulerchip').style.top = rp + 'px';
+  el('rulerchip').innerHTML = '⟷ <b>' + fmtYear(state.rulerYear) + '</b><i>time ruler</i>';
+}
+
+// ---------- Render: map ----------
+function renderMap() {
+  map.innerHTML = '';
+  MH = el('mapwrap').clientHeight;
+  map.setAttribute('viewBox', `0 0 ${W} ${MH}`);
+  svgEl(map, 'rect', { x: AXIS_W, y: 0, width: W - AXIS_W - PAD_R, height: MH, fill: 'var(--ocean)' });
+  // graticule
+  for (let lon = -90; lon <= 120; lon += 30) {
+    svgEl(map, 'line', { x1: lonX(lon), x2: lonX(lon), y1: 0, y2: MH, stroke: 'var(--grid)', 'stroke-width': 1, opacity: 0.6 });
+  }
+  // land
+  for (const poly of LAND) {
+    const d = poly.map((p, i) => (i ? 'L' : 'M') + lonX(p[0]).toFixed(1) + ' ' + latY(p[1]).toFixed(1)).join(' ') + ' Z';
+    svgEl(map, 'path', { d, fill: 'var(--land)', stroke: 'var(--landline)', 'stroke-width': 1, 'stroke-linejoin': 'round' });
+  }
+  // compression break (Atlantic)
+  const bx = (lonX(-33) + lonX(-19)) / 2;
+  const brk = svgEl(map, 'g', {});
+  svgEl(brk, 'rect', { x: bx - 4, y: 0, width: 8, height: MH, fill: 'var(--surface)' });
+  svgEl(brk, 'line', { x1: bx - 7, x2: bx - 1, y1: -2, y2: MH + 2, stroke: 'var(--axis)', 'stroke-width': 1.25 });
+  svgEl(brk, 'line', { x1: bx + 1, x2: bx + 7, y1: -2, y2: MH + 2, stroke: 'var(--axis)', 'stroke-width': 1.25 });
+  const tt = svgEl(brk, 'title', {});
+  tt.textContent = 'Atlantic compressed (ocean-trimmed x-axis)';
+  // lane territory boxes (true 2D lat×lon geography — Europe sits north of
+  // Africa's box where their longitudes overlap) + leader lines from the lane
+  // slot above, the visible carrier of the lane→territory link where the
+  // pragmatic reorder decouples them
+  LANES.forEach((ln, i) => {
+    // a split lane swaps its single territory box for the children's boxes,
+    // each with its own leader line from its column (docs/specs/lane-split.md)
+    const cols = SLOTS[i].kids
+      ? SLOTS[i].kids.map((s, k) => ({ cx: (s.x0 + s.x1) / 2, def: ln._children[k], color: laneColor(i, k) }))
+      : [{ cx: laneCx(i), def: ln, color: laneColor(i) }];
+    const g = svgEl(map, 'g', {});
+    g.classList.add('mapband', 'm' + i);
+    if (state.hoverLane >= 0 && state.hoverLane !== i) g.classList.add('dim');
+    for (const col of cols) {
+      const x0 = lonX(col.def.lon0), x1 = lonX(col.def.lon1);
+      const yTop = latY(col.def.lat1), yBot = latY(col.def.lat0);
+      svgEl(g, 'line', {
+        x1: col.cx, y1: 0, x2: (x0 + x1) / 2, y2: yTop,
+        stroke: col.color, 'stroke-width': 1.5, opacity: state.hoverLane === i ? 0.95 : 0.55,
+      });
+      const band = svgEl(g, 'rect', {
+        x: x0, y: yTop, width: x1 - x0, height: yBot - yTop, rx: 3,
+        fill: col.color, opacity: state.hoverLane === i ? 0.3 : 0.16,
+        stroke: col.color, 'stroke-width': 1,
+      });
+      band.addEventListener('pointerenter', () => { if (state.hoverLane !== i) { state.hoverLane = i; render(); } });
+      band.addEventListener('pointerleave', () => { if (state.hoverLane !== -1) { state.hoverLane = -1; render(); } });
+      const t = svgEl(band, 'title', {});
+      t.textContent = col.def.name;
+    }
+  });
+}
+
+// ---------- Render: chrome ----------
+function renderStatus() {
+  const e1 = yearAt(PLOT_TOP), e2 = yearAt(H - PLOT_BOT);
+  const lo = Math.min(e1, e2), hi = Math.max(e1, e2);
+  el('st-range').textContent = 'Viewing ' + fmtYear(lo) + ' → ' + fmtYear(hi);
+  const cut = tierCutoff();
+  el('ztiers').title = 'Detail: ' + (cut === 1 ? 'era-defining' : cut === 2 ? 'era-defining + major' : 'era-defining + major + notable');
+  el('ztiers').querySelectorAll('.zd').forEach((d, k) => d.classList.toggle('on', k < cut));
+}
+
+function render() {
+  W = tlwrap.clientWidth; H = tlwrap.clientHeight;
+  SLOTS = computeSlots();
+  clampView();
+  renderTimeline();
+  renderMap();
+  renderStatus();
+  state.hlNew = false; // entry pop plays on the first paint only
+  // thread draw-on holds until the camera glide settles (mid-glide repaints
+  // restart the CSS animation at progress 0, so the path stays hidden), then
+  // the first steady render plays it once
+  if (!viewAnimRaf) state.threadNew = false;
+  mcpSyncHook?.(); // MCP mode: report settled state to the host (debounced)
+}
+
+// ---------- Tooltip ----------
+const TIER_NAMES = { 1: 'era-defining', 2: 'major', 3: 'notable', 4: 'local' };
+function fmtWhen(e) {
+  return (e.circa ? 'c. ' : '') + fmtYear(e.start) + (e.end ? ' – ' + fmtYear(e.end) : '');
+}
+function showTip(ev, idx) {
+  const e = EVENTS[idx];
+  tip.innerHTML = `<div class="t">${e.title}</div>` +
+    `<div class="m">${fmtWhen(e)} · ${REGIONS[e.region] || e.region}</div>` +
+    `<div class="m">${e.themes.map(t => THEMES[t] || t).join(' · ')} · Tier ${e.tier} (${TIER_NAMES[e.tier]})</div>`;
+  tip.style.display = 'block';
+  moveTip(ev);
+}
+function moveTip(ev) {
+  const pad = 14;
+  let x = ev.clientX + pad, y = ev.clientY + pad;
+  const r = tip.getBoundingClientRect();
+  if (x + r.width > innerWidth - 8) x = ev.clientX - r.width - pad;
+  if (y + r.height > innerHeight - 8) y = ev.clientY - r.height - pad;
+  tip.style.left = x + 'px'; tip.style.top = y + 'px';
+}
+function hideTip() { tip.style.display = 'none'; }
+
+// ---------- Interaction ----------
+tlwrap.addEventListener('wheel', ev => {
+  ev.preventDefault();
+  stopViewAnim();
+  const rect = tlwrap.getBoundingClientRect();
+  const y = ev.clientY - rect.top;
+  const yr = yearAt(y);
+  state.ppy *= Math.pow(1.0016, -ev.deltaY);
+  state.ppy = Math.max(fitPpy(), Math.min(3, state.ppy));
+  setViewSoYearAt(y, yr);
+  render();
+}, { passive: false });
+
+let panFrom = null;
+tlwrap.addEventListener('pointerdown', ev => {
+  if (ev.target.closest('.rulerchip, .rulergrab, .lanehead')) return;
+  stopViewAnim();
+  panFrom = { y: ev.clientY, viewLo: state.viewLo };
+  tlwrap.classList.add('panning');
+  tlwrap.setPointerCapture(ev.pointerId);
+});
+tlwrap.addEventListener('pointermove', ev => {
+  if (!panFrom) return;
+  const dy = ev.clientY - panFrom.y;
+  state.viewLo = panFrom.viewLo + (state.dir === 'up' ? dy : -dy) / state.ppy;
+  render();
+});
+tlwrap.addEventListener('pointerup', () => { panFrom = null; tlwrap.classList.remove('panning'); });
+tlwrap.addEventListener('pointercancel', () => { panFrom = null; tlwrap.classList.remove('panning'); });
+
+function rulerDrag(el_) {
+  el_.addEventListener('pointerdown', ev => {
+    ev.stopPropagation();
+    stopViewAnim();
+    el_.setPointerCapture(ev.pointerId);
+    const move = e => {
+      const rect = tlwrap.getBoundingClientRect();
+      const y = Math.max(PLOT_TOP, Math.min(H - PLOT_BOT, e.clientY - rect.top));
+      state.rulerYear = Math.max(YMIN, Math.min(YMAX, yearAt(y)));
+      render();
+    };
+    const up = () => { el_.removeEventListener('pointermove', move); el_.removeEventListener('pointerup', up); };
+    el_.addEventListener('pointermove', move);
+    el_.addEventListener('pointerup', up);
+  });
+}
+rulerDrag(el('rulerchip'));
+rulerDrag(el('rulergrab'));
+
+// ---------- Copilot motion ----------
+// Tool-driven changes glide instead of jumping so the user can see the copilot
+// act on the canvas; direct manipulation (wheel, drag) stays immediate and
+// cancels any glide in flight.
+const REDUCED_MOTION = matchMedia('(prefers-reduced-motion: reduce)');
+let viewAnimRaf = 0, viewAnimTo = null;
+function stopViewAnim() { if (viewAnimRaf) { cancelAnimationFrame(viewAnimRaf); viewAnimRaf = 0; viewAnimTo = null; } }
+function animateView(t = {}) {
+  // merge with any glide already in flight, so a batch of tool calls (zoom,
+  // then ruler) composes into one glide instead of the last cancelling the rest
+  const { viewLo, ppy, rulerYear } = { ...(viewAnimRaf ? viewAnimTo : null), ...t };
+  stopViewAnim();
+  viewAnimTo = { viewLo, ppy, rulerYear };
+  const from = { lo: state.viewLo, ppy: state.ppy, ru: yrU(state.rulerYear) };
+  const to = {
+    lo: viewLo ?? from.lo,
+    ppy: ppy ?? from.ppy,
+    ru: rulerYear === undefined ? from.ru : yrU(rulerYear),
+  };
+  const finish = () => { state.viewLo = to.lo; state.ppy = to.ppy; state.rulerYear = uYr(to.ru); render(); };
+  if (REDUCED_MOTION.matches) return finish();
+  const t0 = performance.now(), dur = 650;
+  const ease = t => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+  const step = now => {
+    const t = Math.min(1, (now - t0) / dur);
+    if (t >= 1) { viewAnimRaf = 0; return finish(); }
+    const k = ease(t);
+    state.ppy = from.ppy * Math.pow(to.ppy / from.ppy, k); // log-space, so zoom feels constant-rate
+    state.viewLo = from.lo + (to.lo - from.lo) * k;
+    state.rulerYear = uYr(from.ru + (to.ru - from.ru) * k);
+    render();
+    viewAnimRaf = requestAnimationFrame(step);
+  };
+  viewAnimRaf = requestAnimationFrame(step);
+}
+function pulseStage() {
+  const s = document.querySelector('.stage');
+  s.classList.remove('copilot-pulse');
+  void s.offsetWidth; // restart the one-shot animation
+  s.classList.add('copilot-pulse');
+}
+
+// Lane-split motion (docs/specs/lane-split.md): slot widths tween between the
+// previous and target layouts — the lane slides apart / merges back.
+let splitFrom = null, splitT = 1, splitRaf = 0;
+function setSplitLane(id) {
+  if (state.splitLane === id) return;
+  cancelAnimationFrame(splitRaf); splitRaf = 0;
+  splitFrom = state.splitLane;
+  state.splitLane = id;
+  if (REDUCED_MOTION.matches) { splitT = 1; render(); return; }
+  splitT = 0;
+  const t0 = performance.now(), dur = 450;
+  const step = now => {
+    splitT = Math.min(1, (now - t0) / dur);
+    render();
+    if (splitT < 1) splitRaf = requestAnimationFrame(step); else splitRaf = 0;
+  };
+  splitRaf = requestAnimationFrame(step);
+}
+
+el('resetbtn').addEventListener('click', () => {
+  state.highlights.clear(); state.selected = null; state.thread = null;
+  syncSelUI(); syncThreadUI();
+  if (state.splitLane) setSplitLane(null);
+  animateView({ viewLo: 0, ppy: fitPpy(), rulerYear: -540 });
+});
+
+// glide so the active thread's full span fills the view, then render (the
+// draw-on plays once the glide settles — see render()). Unlike zoom_to_range's
+// centered fit, this reserves headroom at the top so the thread's newest member
+// (which the fit would otherwise pin to the edge) clears the lane-header band
+// and keeps its label.
+function threadFitView() {
+  const ti = threadInfo();
+  if (!ti) return render();
+  const TOP_CLEAR = 64, BOT_CLEAR = 24;
+  const a = Math.min(...ti.members.map(e => e.start));
+  const b = Math.max(...ti.members.map(e => e.end ?? e.start));
+  const ua = yrU(Math.max(YMIN, a)), ub = yrU(Math.min(YMAX, b));
+  const usable = Math.max(80, plotH() - TOP_CLEAR - BOT_CLEAR);
+  const ppy = Math.max(fitPpy(), Math.min(3, usable / Math.max(20, ub - ua)));
+  const lo = state.dir === 'up'
+    ? ub - (H - PLOT_BOT - PLOT_TOP - TOP_CLEAR) / ppy
+    : ua - TOP_CLEAR / ppy;
+  animateView({ viewLo: lo, ppy });
+}
+
+// zoom control (zooms around the canvas midpoint; wheel zoom still works)
+function zoomBy(f) {
+  stopViewAnim();
+  const yr = yearAt(H / 2);
+  state.ppy = Math.max(fitPpy(), Math.min(3, state.ppy * f));
+  setViewSoYearAt(H / 2, yr);
+  render();
+}
+el('zin').addEventListener('click', () => zoomBy(1.5));
+el('zout').addEventListener('click', () => zoomBy(1 / 1.5));
+
+// theme filter (multi-select dropdown in the top bar)
+const themepanel = el('themepanel');
+{
+  const all = document.createElement('button');
+  all.className = 'btn allbtn'; all.textContent = 'All themes';
+  all.addEventListener('click', () => { state.themes.clear(); syncThemeUI(); render(); });
+  themepanel.appendChild(all);
+  for (const key in THEMES) {
+    const row = document.createElement('label');
+    row.className = 'ddrow';
+    const cb = document.createElement('input');
+    cb.type = 'checkbox'; cb.dataset.theme = key;
+    cb.addEventListener('change', () => {
+      if (cb.checked) state.themes.add(key); else state.themes.delete(key);
+      syncThemeUI(); render();
+    });
+    row.appendChild(cb);
+    row.appendChild(document.createTextNode(THEMES[key]));
+    themepanel.appendChild(row);
+  }
+}
+function syncThemeUI() {
+  el('themesum').textContent = state.themes.size ? `Themes · ${state.themes.size}` : 'Themes';
+  themepanel.querySelectorAll('input[data-theme]').forEach(cb => { cb.checked = state.themes.has(cb.dataset.theme); });
+}
+syncThemeUI();
+
+// thread picker (curated threads only; the copilot can also draw ad-hoc ones)
+const threadpanel = el('threadpanel');
+{
+  const none = document.createElement('button');
+  none.className = 'btn allbtn'; none.type = 'button'; none.textContent = 'No thread';
+  none.addEventListener('click', () => {
+    state.thread = null; syncThreadUI();
+    el('threaddd').removeAttribute('open'); render();
+  });
+  threadpanel.appendChild(none);
+  for (const t of THREADS) {
+    const b = document.createElement('button');
+    b.className = 'ddrow threadrow'; b.type = 'button'; b.textContent = t.title;
+    b.title = t.summary; b.dataset.thread = t.id;
+    b.addEventListener('click', () => {
+      state.thread = { kind: 'curated', id: t.id };
+      state.threadNew = true;
+      syncThreadUI(); el('threaddd').removeAttribute('open');
+      threadFitView();
+    });
+    threadpanel.appendChild(b);
+  }
+}
+function syncThreadUI() {
+  const ti = threadInfo();
+  const short = ti && !ti.adhoc ? (THREADS.find(t => t.id === state.thread.id)?.short || ti.title) : ti?.title;
+  el('threadsum').textContent = ti ? 'Thread · ' + short : 'Threads';
+  threadpanel.querySelectorAll('.threadrow').forEach(b =>
+    b.classList.toggle('on', state.thread?.kind === 'curated' && state.thread.id === b.dataset.thread));
+}
+syncThreadUI();
+
+// dropdowns close on outside click
+document.addEventListener('pointerdown', ev => {
+  document.querySelectorAll('details.dd[open]').forEach(d => { if (!d.contains(ev.target)) d.removeAttribute('open'); });
+});
+
+// keyboard
+window.addEventListener('keydown', ev => {
+  if (ev.target.closest('button, summary, input')) return;
+  stopViewAnim();
+  const span = plotH() / state.ppy;
+  if (ev.key === 'ArrowUp') { state.viewLo += (state.dir === 'up' ? 1 : -1) * span * 0.1; render(); }
+  else if (ev.key === 'ArrowDown') { state.viewLo -= (state.dir === 'up' ? 1 : -1) * span * 0.1; render(); }
+  else if (ev.key === '+' || ev.key === '=') { state.ppy *= 1.25; render(); }
+  else if (ev.key === '-') { state.ppy /= 1.25; render(); }
+});
+
+// data table (accessibility / relief rule)
+function refreshTable() {
+  const rows = EVENTS.slice().sort((a, b) => a.start - b.start);
+  el('datatable').innerHTML =
+    '<tr><th>Year</th><th>Event</th><th>Lane</th><th>Region</th><th>Themes</th><th>Tier</th></tr>' +
+    rows.map(e =>
+      `<tr><td>${fmtWhen(e)}</td><td>${e.title}</td><td>${LANES[e._lane].name}</td><td>${REGIONS[e.region] || e.region}</td><td>${e.themes.map(t => THEMES[t] || t).join(', ')}</td><td>${e.tier}</td></tr>`
+    ).join('');
+}
+refreshTable();
+
+// ---------- Copilot chat ----------
+// The agentic loop runs here: the server (server.mjs) proxies one model call
+// per hop; tool_use blocks come back and are executed against the canvas.
+const chatlog = el('chatlog'), chatinput = el('chatinput');
+const chatMessages = [];
+let chatBusy = false;
+
+el('chatbtn').addEventListener('click', () => el('cbroot').classList.toggle('chat-closed'));
+el('chatclose').addEventListener('click', () => el('cbroot').classList.add('chat-closed'));
+el('selclear').addEventListener('click', () => { state.selected = null; syncSelUI(); render(); });
+
+function syncSelUI() {
+  const e = state.selected ? EVENTS.find(x => x.id === state.selected) : null;
+  el('selrow').hidden = !e;
+  if (e) el('seltext').textContent = 'Selected: ' + (e.short || e.title);
+}
+
+function bubble(cls, text) {
+  const d = document.createElement('div');
+  d.className = 'msg ' + cls;
+  d.textContent = text;
+  chatlog.appendChild(d);
+  chatlog.scrollTop = chatlog.scrollHeight;
+  return d;
+}
+
+function viewStateText() {
+  const e1 = yearAt(PLOT_TOP), e2 = yearAt(H - PLOT_BOT);
+  const sel = state.selected ? EVENTS.find(x => x.id === state.selected) : null;
+  const ti = threadInfo();
+  const spl = state.splitLane ? LANES.find(l => l.id === state.splitLane) : null;
+  return '<view_state>\n' +
+    'Visible: ' + fmtYear(Math.min(e1, e2)) + ' to ' + fmtYear(Math.max(e1, e2)) + '\n' +
+    'Detail tiers shown: 1-' + tierCutoff() + '\n' +
+    'Theme filter: ' + (state.themes.size ? [...state.themes].join(', ') : 'all') + '\n' +
+    'Time ruler: ' + fmtYear(state.rulerYear) + '\n' +
+    'Highlighted: ' + (state.highlights.size ? [...state.highlights].join(', ') : 'none') + '\n' +
+    'Thread: ' + (ti ? (ti.adhoc ? '"' + ti.title + '" (ad-hoc, ' + ti.members.length + ' events)' : ti.title + ' (' + ti.members.length + ' events)') : 'none') + '\n' +
+    'Split lane: ' + (spl ? spl.name + ' → ' + spl._children.map(c => c.name).join(' · ') : 'none') + '\n' +
+    (sel ? 'User-selected event: ' + sel.id + ' — ' + sel.title : 'No event selected') +
+    '\n</view_state>';
+}
+
+function applyTool(name, input) {
+  switch (name) {
+    case 'set_theme_filter': {
+      state.themes = new Set((input.themes || []).filter(t => THEMES[t]));
+      syncThemeUI(); render();
+      return state.themes.size
+        ? { label: 'Filtered to ' + [...state.themes].map(t => THEMES[t]).join(', '), result: 'ok — showing themes: ' + [...state.themes].join(',') }
+        : { label: 'Showing all themes', result: 'ok — theme filter cleared' };
+    }
+    case 'zoom_to_range': {
+      const a = Math.max(YMIN, Math.min(input.start_year, input.end_year));
+      const b = Math.min(YMAX, Math.max(input.start_year, input.end_year));
+      const ua = yrU(a), ub = yrU(b);
+      const span = Math.max(20, ub - ua) * 1.15;
+      const ppy = Math.max(fitPpy(), Math.min(3, plotH() / span));
+      const mid = (ua + ub) / 2;
+      const lo = state.dir === 'up' ? mid - (H - PLOT_BOT - H / 2) / ppy : mid - (H / 2 - PLOT_TOP) / ppy;
+      animateView({ viewLo: lo, ppy });
+      const cut = ppy >= 0.6 ? 3 : ppy >= 0.22 ? 2 : 1;
+      return { label: 'Zoomed to ' + fmtYear(a) + ' – ' + fmtYear(b), result: 'ok — now showing detail tiers 1-' + cut };
+    }
+    case 'set_time_ruler': {
+      const year = Math.max(YMIN, Math.min(YMAX, input.year));
+      animateView({ rulerYear: year });
+      return { label: 'Ruler → ' + fmtYear(year), result: 'ok — ruler at ' + fmtYear(year) };
+    }
+    case 'highlight_events': {
+      const ids = input.ids || [];
+      const known = ids.filter(id => EVENTS.some(e => e.id === id));
+      state.highlights = new Set(known);
+      state.hlNew = true;
+      render();
+      const missing = ids.filter(id => !known.includes(id));
+      return {
+        label: known.length ? 'Highlighted ' + known.length + ' event' + (known.length > 1 ? 's' : '') : 'No matching events to highlight',
+        result: 'ok — highlighted: ' + (known.join(', ') || 'none') + (missing.length ? '; unknown ids: ' + missing.join(', ') : ''),
+      };
+    }
+    case 'show_thread': {
+      const t = THREADS.find(t => t.id === input.id);
+      if (!t) return {
+        label: 'Unknown thread: ' + input.id,
+        result: 'error: unknown thread id "' + input.id + '" — valid ids: ' + THREADS.map(t => t.id).join(', '),
+      };
+      state.thread = { kind: 'curated', id: t.id };
+      state.threadNew = true;
+      syncThreadUI();
+      threadFitView();
+      const ms = threadInfo().members;
+      const a = Math.min(...ms.map(e => e.start)), b = Math.max(...ms.map(e => e.end ?? e.start));
+      return {
+        label: 'Thread: ' + t.title,
+        result: `ok — thread "${t.title}": ${ms.length} events, ${fmtYear(a)} → ${fmtYear(b)}`,
+      };
+    }
+    case 'connect_events': {
+      const ids = [...new Set(input.ids || [])];
+      const known = ids.filter(id => EVENTS.some(e => e.id === id));
+      const missing = ids.filter(id => !known.includes(id));
+      const warn = missing.length ? '; unknown ids: ' + missing.join(', ') : '';
+      if (known.length < 2) return {
+        label: 'Could not connect events',
+        result: 'error: connect_events needs at least 2 known event ids' + warn,
+      };
+      // sorted here, deterministically — the model need not know the dates
+      known.sort((x, y) => EVENTS.find(e => e.id === x).start - EVENTS.find(e => e.id === y).start);
+      const label = String(input.label || 'connection').slice(0, 60);
+      state.thread = { kind: 'adhoc', ids: known, label };
+      state.threadNew = true;
+      syncThreadUI();
+      threadFitView();
+      return {
+        label: 'Connected: ' + label,
+        result: `ok — connected ${known.length} events as "${label}" (ad-hoc)` + warn,
+      };
+    }
+    case 'split_lane': {
+      const ln = LANES.find(l => l.id === input.lane && l._children.length);
+      if (!ln) return {
+        label: 'Cannot split: ' + input.lane,
+        result: 'error: unknown or unsplittable lane "' + input.lane + '" — splittable: ' +
+          LANES.filter(l => l._children.length).map(l => l.id).join(', '),
+      };
+      if (!input.split) {
+        if (state.splitLane !== ln.id) return { label: ln.name + ' is not split', result: 'ok — ' + ln.name + ' was not split' };
+        setSplitLane(null);
+        return { label: ln.name + ' merged', result: 'ok — ' + ln.name + ' collapsed into one lane' };
+      }
+      setSplitLane(ln.id);
+      const names = ln._children.map(c => c.name).join(' · ');
+      return {
+        label: ln.name + ' split into ' + names,
+        result: 'ok — ' + ln.name + ' split into ' + names + ' (' + ln._children.map(c => c._count).join(' · ') + ' events)',
+      };
+    }
+    case 'reset_view': {
+      state.themes.clear(); state.highlights.clear(); state.thread = null;
+      syncThemeUI(); syncThreadUI();
+      if (state.splitLane) setSplitLane(null);
+      animateView({ viewLo: 0, ppy: fitPpy(), rulerYear: -540 });
+      return { label: 'View reset', result: 'ok' };
+    }
+    default:
+      return { label: 'Unknown tool: ' + name, result: 'error: unknown tool ' + name };
+  }
+}
+
+// One hop = one model call. The server streams SSE, so text renders into a
+// live bubble as the model writes it; the final message (with any tool_use
+// blocks) arrives in the closing "done" frame. A plain-JSON response (an
+// older, non-streaming server.mjs) still works.
+async function chatHop() {
+  const resp = await fetch('/api/chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ messages: chatMessages }),
+  });
+  if (resp.status === 404 || resp.status === 405) throw new TypeError('no chat endpoint');
+  if ((resp.headers.get('content-type') || '').includes('application/json')) {
+    const msg = await resp.json().catch(() => ({}));
+    if (!resp.ok || msg.error) throw new Error(msg.error || 'HTTP ' + resp.status);
+    for (const b of msg.content || []) if (b.type === 'text' && b.text) bubble('bot', b.text);
+    return msg;
+  }
+  if (!resp.ok) throw new Error('HTTP ' + resp.status);
+  const spinner = bubble('action', 'thinking…');
+  const reader = resp.body.getReader();
+  const dec = new TextDecoder();
+  let buf = '', live = null, final = null, failed = null;
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      let i;
+      while ((i = buf.indexOf('\n\n')) >= 0) {
+        const frame = buf.slice(0, i);
+        buf = buf.slice(i + 2);
+        for (const line of frame.split('\n')) {
+          if (!line.startsWith('data: ')) continue;
+          let ev;
+          try { ev = JSON.parse(line.slice(6)); } catch { continue; }
+          if (ev.type === 'text' && ev.text) {
+            if (!live) { spinner.remove(); live = bubble('bot', ''); }
+            live.textContent += ev.text;
+            chatlog.scrollTop = chatlog.scrollHeight;
+          } else if (ev.type === 'done') final = ev;
+          else if (ev.type === 'error') failed = ev.error;
+        }
+      }
+    }
+  } finally {
+    spinner.remove();
+  }
+  if (failed) throw new Error(failed);
+  if (!final) throw new Error('the stream ended unexpectedly');
+  // text normally arrives via deltas; if this hop had none, render it whole
+  if (!live) for (const b of final.content) if (b.type === 'text' && b.text) bubble('bot', b.text);
+  return final;
+}
+
+async function sendChat(text) {
+  if (chatBusy) return;
+  chatBusy = true;
+  bubble('user', text);
+  chatMessages.push({ role: 'user', content: viewStateText() + '\n\n' + text });
+  try {
+    for (let hop = 0; hop < 6; hop++) {
+      const msg = await chatHop();
+      chatMessages.push({ role: 'assistant', content: msg.content });
+      if (msg.stop_reason === 'refusal') { bubble('action', 'The copilot declined this request.'); break; }
+      if (msg.stop_reason !== 'tool_use') break;
+      pulseStage();
+      const results = [];
+      for (const b of msg.content) {
+        if (b.type !== 'tool_use') continue;
+        const out = applyTool(b.name, b.input || {});
+        bubble('action', '⚙ ' + out.label);
+        results.push({ type: 'tool_result', tool_use_id: b.id, content: out.result });
+      }
+      chatMessages.push({ role: 'user', content: results });
+    }
+  } catch (err) {
+    bubble('action', err instanceof TypeError
+      ? 'The copilot needs the local server — run `node server.mjs` in the repo, then open http://localhost:8437.'
+      : 'Copilot error: ' + err.message);
+  } finally {
+    chatBusy = false;
+  }
+}
+
+el('chatform').addEventListener('submit', ev => {
+  ev.preventDefault();
+  const text = chatinput.value.trim();
+  if (!text) return;
+  chatinput.value = '';
+  sendChat(text);
+});
+
+bubble('action', 'Ask about what you see — try “what else was happening around 1200?” — or click an event to talk about it.');
+
+// ---------- MCP App host bridge (Variant B — docs/specs/mcp-app.md) ----------
+// Hand-rolled speaker of the MCP Apps ui/ postMessage dialect (spec 2025-11-21).
+// The ext-apps App class assumes a bundler; the protocol is small enough to
+// speak directly, which keeps this file single-file and build-free. Standalone
+// use (no MCP host answering) is untouched: the chat panel returns after a
+// short probe and everything behaves as Variant A.
+let mcpSyncHook = null;
+(function mcpBridge() {
+  if (window.parent === window) return; // not embedded — pure standalone
+  let rpcId = 0, connected = false;
+  const replies = new Map();
+  const post = msg => window.parent.postMessage(msg, '*');
+  const request = (method, params) => new Promise((resolve, reject) => {
+    const id = ++rpcId;
+    replies.set(id, { resolve, reject });
+    post({ jsonrpc: '2.0', id, method, params });
+  });
+  const notify = (method, params) => post({ jsonrpc: '2.0', method, params });
+
+  // Embedded: assume a host until the probe says otherwise (artifact/plain
+  // iframe embeds get the chat panel back after 2s).
+  el('cbroot').classList.add('chat-closed');
+  const probe = setTimeout(() => { if (!connected) el('cbroot').classList.remove('chat-closed'); }, 2000);
+
+  function applyHostContext(ctx) {
+    if (!ctx) return;
+    if (ctx.theme === 'dark' || ctx.theme === 'light') document.documentElement.dataset.theme = ctx.theme;
+    if (ctx.safeAreaInsets) {
+      const { top = 0, right = 0, bottom = 0, left = 0 } = ctx.safeAreaInsets;
+      el('cbroot').style.padding = `${top}px ${right}px ${bottom}px ${left}px`;
+    }
+  }
+
+  // Full-state application: correct whether we are the live instance being
+  // driven (animated glide) or a fresh iframe rendering mid-conversation.
+  function applyHostState(v) {
+    if (!v) return;
+    if (Array.isArray(v.themes)) { state.themes = new Set(v.themes.filter(t => THEMES[t])); syncThemeUI(); }
+    if (Array.isArray(v.highlights)) {
+      state.highlights = new Set(v.highlights.filter(id => EVENTS.some(e => e.id === id)));
+      state.hlNew = true;
+    }
+    if (v.selected !== undefined) { state.selected = v.selected; syncSelUI(); }
+    if (v.thread !== undefined) { state.thread = v.thread; state.threadNew = true; syncThreadUI(); }
+    if (v.split_lane !== undefined && v.split_lane !== state.splitLane) setSplitLane(v.split_lane);
+    const a = Math.max(YMIN, Math.min(v.start_year ?? YMIN, v.end_year ?? YMAX));
+    const b = Math.min(YMAX, Math.max(v.start_year ?? YMIN, v.end_year ?? YMAX));
+    const ua = yrU(a), ub = yrU(b);
+    const span = Math.max(20, ub - ua) * 1.15;
+    const ppy = Math.max(fitPpy(), Math.min(3, plotH() / span));
+    const mid = (ua + ub) / 2;
+    const lo = state.dir === 'up' ? mid - (H - PLOT_BOT - H / 2) / ppy : mid - (H / 2 - PLOT_TOP) / ppy;
+    pulseStage();
+    animateView({
+      viewLo: lo, ppy,
+      rulerYear: v.ruler_year === undefined ? undefined : Math.max(YMIN, Math.min(YMAX, v.ruler_year)),
+    });
+  }
+
+  window.addEventListener('message', ev => {
+    if (ev.source !== window.parent) return;
+    const m = ev.data;
+    if (!m || m.jsonrpc !== '2.0') return;
+    if (m.id !== undefined && (m.result !== undefined || m.error !== undefined)) {
+      const p = replies.get(m.id);
+      if (p) { replies.delete(m.id); m.error ? p.reject(new Error(m.error.message)) : p.resolve(m.result); }
+      return;
+    }
+    switch (m.method) {
+      case 'ui/notifications/tool-result':
+        applyHostState(m.params?.structuredContent?.view);
+        break;
+      case 'ui/notifications/host-context-changed':
+        applyHostContext(m.params);
+        break;
+      case 'ui/resource-teardown':
+        post({ jsonrpc: '2.0', id: m.id, result: {} });
+        break;
+      // tool-input carries no tool name; the full state rides on tool-result
+      case 'ui/notifications/tool-input':
+      case 'ui/notifications/tool-input-partial':
+      case 'ui/notifications/tool-cancelled':
+        break;
+    }
+  });
+
+  const currentView = () => {
+    const e1 = yearAt(PLOT_TOP), e2 = yearAt(H - PLOT_BOT);
+    return {
+      start_year: Math.round(Math.min(e1, e2)),
+      end_year: Math.round(Math.max(e1, e2)),
+      ruler_year: Math.round(state.rulerYear),
+      themes: [...state.themes],
+      highlights: [...state.highlights],
+      selected: state.selected,
+      thread: state.thread,
+      split_lane: state.splitLane,
+    };
+  };
+
+  // Debounced after every render settles: the model's <view_state> equivalent
+  // (deferred by the host until the next user message) plus a server sync so
+  // the merged state tracks user-driven pans, zooms, and clicks.
+  let syncTimer = 0;
+  mcpSyncHook = () => {
+    if (!connected) return;
+    clearTimeout(syncTimer);
+    syncTimer = setTimeout(() => {
+      const v = currentView();
+      request('ui/update-model-context', {
+        content: [{ type: 'text', text: viewStateText() }],
+        structuredContent: { view: v },
+      }).catch(() => {});
+      request('tools/call', { name: 'sync_view_state', arguments: v }).catch(() => {});
+    }, 500);
+  };
+
+  (async () => {
+    try {
+      const init = await request('ui/initialize', {
+        appInfo: { name: 'ChronoBot Canvas', version: '0.1.0' },
+        appCapabilities: {},
+        protocolVersion: '2025-11-21',
+      });
+      connected = true;
+      clearTimeout(probe);
+      el('cbroot').classList.add('chat-closed'); // in case the probe already restored it
+      notify('ui/notifications/initialized', {});
+      applyHostContext(init?.hostContext);
+      notify('ui/notifications/size-changed', { height: 720 });
+    } catch { /* no host — the probe timeout already restored standalone UI */ }
+  })();
+})();
+
+// resize + init
+new ResizeObserver(() => render()).observe(tlwrap);
+new ResizeObserver(() => render()).observe(el('mapwrap'));
+state.ppy = 0; // will clamp up to fit
+render();
+
+// debug/testing handle — lets tooling drive the canvas the way the copilot
+// does, and read what the model would see (viewStateText is read-only)
+window.chronobot = { state, applyTool, render, viewStateText };
+})();
+</script>
+</body>
+</html>

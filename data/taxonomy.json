@@ -1,0 +1,29 @@
+{
+  "themes": {
+    "politics": "Politics",
+    "war": "War",
+    "religion": "Religion",
+    "culture": "Culture",
+    "tech": "Science & Tech",
+    "crisis": "Crisis"
+  },
+  "regions": {
+    "americas": "The Americas",
+    "americas.mesoamerica": "Mesoamerica",
+    "americas.andes": "Andes",
+    "americas.north": "North America & Caribbean",
+    "europe": "Europe",
+    "africa": "Africa",
+    "africa.west": "West Africa",
+    "africa.north": "Egypt & North Africa",
+    "africa.east": "East Africa & Horn",
+    "africa.central-southern": "Central & Southern Africa",
+    "middle-east": "Middle East",
+    "asia.south": "South Asia",
+    "asia.east": "East Asia",
+    "asia.east.china": "China",
+    "asia.east.japan": "Japan",
+    "asia.southeast": "Southeast Asia",
+    "asia.steppe": "Eurasian Steppe"
+  }
+}

@@ -1,0 +1,34 @@
+[
+  {
+    "id": "written-word",
+    "title": "The written word",
+    "short": "Writing",
+    "summary": "How durable writing was invented in Sumer, alphabetized in the Levant, papered in Han China, block-printed under the Tang, and pressed in Mainz.",
+    "members": ["writing-invented", "alphabet-spreads", "papermaking", "diamond-sutra", "printing-press"],
+    "themes": ["tech"]
+  },
+  {
+    "id": "spread-of-buddhism",
+    "title": "The spread of Buddhism",
+    "short": "Buddhism",
+    "summary": "From the Buddha's teaching in India through Ashoka's patronage to its arrival in Han China and the first printed sutra.",
+    "members": ["buddha", "ashoka", "buddhism-china", "diamond-sutra"],
+    "themes": ["religion"]
+  },
+  {
+    "id": "mongol-world",
+    "title": "The Mongol world",
+    "short": "Mongols",
+    "summary": "The steppe conquests that stitched Eurasia together — and what traveled the routes they opened, from dynasties to the plague.",
+    "members": ["genghis-khan", "baghdad-sacked", "yuan-dynasty", "black-death", "timur"],
+    "themes": ["war"]
+  },
+  {
+    "id": "atlantic-exchange",
+    "title": "The Atlantic exchange",
+    "short": "Atlantic",
+    "summary": "Contact, conquest, and the forced crossings that bound four continents into one Atlantic world.",
+    "members": ["columbus", "cortes-conquest", "slave-trade", "pizarro-conquest"],
+    "themes": ["crisis"]
+  }
+]
