@@ -51,6 +51,17 @@ Inference runs on [DeepInfra](https://deepinfra.com)'s Anthropic-compatible Mess
 
 Spec-first, docs-never-trail-reality: new copilot tools are documented in the architecture registry before implementation, and major features get a spec in `docs/specs/` before code. The working rules — verification norms, data rules, architectural invariants, and the list of deliberately deferred ideas — live in [CLAUDE.md](CLAUDE.md). Start there before changing anything; start with [docs/architecture.md](docs/architecture.md) to understand how it works.
 
+## Status & roadmap
+
+[BACKLOG.md](BACKLOG.md) is the roadmap ledger, kept current by rule and structured in four layers so a newcomer can tell at a glance what's live and what's settled:
+
+1. **Up next** — remaining work in proposed build order (currently: dataset growth + the vetting/sources data passes, then sessions/conversation management).
+2. **Parked / deferred** — real ideas waiting on a named trigger: the CopilotKit harness (Variant C), the knowledge-management design, era bands within lanes, and more.
+3. **Shipped** — the condensed record, newest first, each entry linking its spec.
+4. **Decisions applied** — settled questions with their reasoning, so they aren't relitigated.
+
+Want to contribute? Follow the spec-first method in [CLAUDE.md](CLAUDE.md): pick an item from the backlog, propose or extend a spec in [`docs/specs/`](docs/specs/), get it agreed, then build — with [docs/architecture.md](docs/architecture.md) updated in the same change. Data contributions go through the [significance rubric](docs/significance-rubric.md) and `npm run build-data`.
+
 ## License
 
 Code is [MIT](LICENSE). The curated dataset is the author's original work and ships under the same terms for now; attribution handling will be revisited when third-party open data (CC BY sources like Cliopatria) is ingested — see [docs/research/data-sources.md](docs/research/data-sources.md).
